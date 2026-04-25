@@ -2,184 +2,177 @@
 
 ## Project Overview
 
-This is a full-stack web application called "Platform for Technical Questionaries" - a system for creating, managing, and answering technical questionnaires. The project consists of two main components:
+A full-stack web application for creating and administering technical tests, integrated with **Google Classroom**. Teachers create tests in the app, generate per-student links, grade submissions, and have grades pushed back to Google Classroom automatically.
 
-- **Backend API**: .NET 10.0 ASP.NET Core web API
-- **Frontend Client**: TypeScript/React application using Vite
+- **Backend API**: .NET 10.0 ASP.NET Core (controller-based)
+- **Frontend Client**: TypeScript + React 19 + Vite
+
+### User roles
+- **Teacher** — signs in via Google through the main login screen. Manages courses/tests, grades submissions, syncs grades back to Classroom.
+- **Student** — does **not** sign in from the main login screen. Students reach the app through a per-test link and authenticate via Google at that point.
 
 ## Project Structure
 
 ```
 repo-root/
+├── .github/
+│   └── copilot-instructions.md
+├── .gitignore                    # Ignores VS artifacts, node_modules, Client/dist
 ├── Api/                          # .NET 10.0 backend API
-│   ├── Api.csproj               # Project file
-│   ├── Api.sln                  # Solution file
-│   ├── Program.cs               # Application entry point
-│   ├── appsettings.json         # Production configuration
-│   ├── appsettings.Development.json # Development configuration
-│   ├── Properties/launchSettings.json # Launch settings
-│   ├── bin/                     # Build output
-│   └── obj/                     # Build intermediate files
+│   ├── Api.csproj
+│   ├── Api.sln
+│   ├── Program.cs                # Composition root: DI, auth, CORS, pipeline
+│   ├── app.db                    # SQLite database (auto-created on startup)
+│   ├── appsettings.json          # Connection strings, Google client, Client base URL
+│   ├── appsettings.Development.json
+│   ├── Properties/launchSettings.json
+│   ├── Contracts/                # DTOs / request-response records
+│   │   └── AuthContracts.cs
+│   ├── Controllers/              # API endpoints, grouped by feature
+│   │   └── AuthController.cs
+│   ├── Data/                     # EF Core DbContext
+│   │   └── AppDbContext.cs       # IdentityDbContext<ApplicationUser>
+│   └── Models/                   # Domain entities
+│       └── ApplicationUser.cs    # IdentityUser + Role + Google token fields
 │
-└── Client/                       # TypeScript/React frontend
-    ├── package.json             # npm dependencies
-    ├── tsconfig.json            # TypeScript configuration
-    ├── eslint.config.js         # ESLint configuration
-    ├── vite.config.ts           # Vite bundler configuration
-    ├── index.html               # HTML entry point
-    ├── src/
-    │   ├── main.tsx             # React entry point
-    │   └── App.tsx              # Main React component
-    └── node_modules/            # npm packages
-```
-
-## Build & Development Instructions
-
-### Prerequisites
-
-Before working on either component, ensure you have installed:
-- **.NET 10.0 SDK** - Required for API development
-- **Node.js 18+** - Required for client development (npm comes with Node.js)
-
-### Backend (API) Setup & Build
-
-**Navigate to API directory:**
-```bash
-cd Api
-```
-
-**Build the API:**
-```bash
-dotnet build
-```
-
-**Run the API in development mode:**
-```bash
-dotnet run
-```
-The API will start and listen on `https://localhost:5001` (or http://localhost:5000) as configured in `Properties/launchSettings.json`.
-
-**Clean build artifacts:**
-```bash
-dotnet clean
-```
-
-### Frontend (Client) Setup & Build
-
-**Navigate to client directory:**
-```bash
-cd Client
-```
-
-**Install dependencies (always run this first after cloning or when package.json changes):**
-```bash
-npm install
-```
-
-**Start development server:**
-```bash
-npm run dev
-```
-The dev server will start on `http://localhost:5173` by default.
-
-**Build for production:**
-```bash
-npm run build
-```
-This runs TypeScript type checking (`tsc -b`) followed by Vite build, producing optimized output in the `dist/` directory.
-
-**Lint code:**
-```bash
-npm run lint
-```
-Ensures TypeScript and React code follows ESLint rules defined in `eslint.config.js`.
-
-**Preview production build:**
-```bash
-npm run preview
+└── Client/                       # React + TypeScript frontend
+    ├── package.json
+    ├── vite.config.ts
+    ├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
+    ├── eslint.config.js
+    ├── index.html
+    └── src/
+        ├── main.tsx              # React entry
+        ├── App.tsx               # Auth-gated shell
+        ├── api/
+        │   └── client.ts         # Axios instance (withCredentials, baseURL = API)
+        ├── auth/
+        │   └── AuthContext.tsx   # AuthProvider, useAuth (user, loading, logout, loginWithGoogle)
+        ├── pages/
+        │   ├── LoginPage.tsx     # Teacher-only Google sign-in screen
+        │   └── HomePage.tsx      # Authenticated landing page
+        └── types/
+            └── auth.ts           # User, UserRole types
 ```
 
 ## Key Technologies & Versions
 
 ### Backend
 - **.NET**: 10.0
-- **ASP.NET Core**: Web API with Controllers
+- **ASP.NET Core**: controller-based Web API (no Minimal APIs)
+- **EF Core 10** + **SQLite** (`app.db`)
+- **ASP.NET Core Identity** (`IdentityCore<ApplicationUser>` + `IdentityRole`) for user/role storage. Local password sign-in is **disabled** — only the user store is used.
+- **Cookie auth** (`qapp.auth`) is the app's session scheme.
+- **Google OAuth** via `Microsoft.AspNetCore.Authentication.Google` with two named schemes:
+  - `Google-Teacher` → Google's `CallbackPath` = `/api/auth/google-callback-teacher`, then redirects to `/api/auth/google-complete-teacher` (the controller action that finalizes app sign-in).
+  - `Google-Student` → `CallbackPath` = `/api/auth/google-callback-student`, completion at `/api/auth/google-complete-student`.
+  - Each Google handler stores its temporary external identity in a dedicated cookie scheme (`External-Teacher` / `External-Student`) — this separation is required, do not collapse them.
+  - `SaveTokens = true` and `AccessType = "offline"` so refresh tokens are persisted on `ApplicationUser` for later Classroom API calls.
+- Enums are serialized as strings (`JsonStringEnumConverter`) — the client expects `"Teacher"` / `"Student"`.
 
 ### Frontend
-- **Node.js**: 18+ (recommended)
-- **npm**: Latest (included with Node.js)
-- **TypeScript**: 6.0.2
-- **React**: 19.2.5
-- **React-DOM**: 19.2.5
-- **Vite**: 8.0.10
-- **ESLint**: 10.2.1
-- **react-hook-form**: Latest (form state management)
-- **bootstrap**: Latest (CSS framework)
-- **react-bootstrap**: Latest (Bootstrap React components)
-- **axios**: Latest (HTTP client for API requests)
+- **TypeScript** ~6.0
+- **React** 19 / **react-dom** 19
+- **Vite** 8 (dev server on `http://localhost:5173`)
+- **react-hook-form** (forms)
+- **react-bootstrap** + **bootstrap** (UI / styling)
+- **axios** (HTTP, always with `withCredentials: true` against the API)
+- ESLint 10 + typescript-eslint
 
-## Backend Architecture
+## Configuration
 
-### ASP.NET Core Controllers
-- Use ASP.NET Core controllers for all API endpoints
-- Organize controllers logically by feature domain
-- Each controller should handle a specific resource or feature area
-- All HTTP endpoints must be implemented as controller actions
-- Use appropriate HTTP verbs (GET, POST, PUT, DELETE, PATCH)
-- Follow REST conventions for endpoint design
+### Ports & URLs
+- API: `http://localhost:5107` (HTTP only — required because the registered Google redirect URIs are HTTP). Configured in `Api/Properties/launchSettings.json`.
+- Client dev server: `http://localhost:5173`. The API allows this origin via CORS with credentials.
+- Google Cloud OAuth client has these registered Authorized redirect URIs:
+  - `http://localhost:5107/api/auth/google-callback-teacher`
+  - `http://localhost:5107/api/auth/google-callback-student`
 
-## Frontend Architecture
+### Required configuration values (`Api/appsettings.json` or user-secrets)
+- `ConnectionStrings:Default` — SQLite connection string (default: `Data Source=app.db`)
+- `Google:ClientId`, `Google:ClientSecret` — store via user-secrets in dev:
+  ```bash
+  cd Api
+  dotnet user-secrets init
+  dotnet user-secrets set "Google:ClientId" "<id>"
+  dotnet user-secrets set "Google:ClientSecret" "<secret>"
+  ```
+- `Client:BaseUrl` — used by the API to redirect back to the SPA after OAuth (default `http://localhost:5173`).
 
-### React Components & Forms
-- Use **react-hook-form** for all form state management and validation
-- Use **react-bootstrap** components for UI elements (buttons, forms, modals, cards, etc.)
-- Use **bootstrap** classes for styling and layout when react-bootstrap components are not available
-- Use **axios** for all HTTP requests to the backend API
-- Organize components logically by feature in the `src/` directory
+## Build & Development
+
+### Prerequisites
+- **.NET 10.0 SDK**
+- **Node.js 18+**
+
+### Backend
+```bash
+cd Api
+dotnet build        # validate C#
+dotnet run          # starts API on http://localhost:5107
+dotnet clean
+```
+The DB schema is created on startup via `EnsureCreated()`; roles `Teacher` and `Student` are seeded automatically.
+
+### Frontend
+```bash
+cd Client
+npm install         # after clone or dependency change
+npm run dev         # http://localhost:5173, HMR
+npm run build       # tsc -b && vite build → dist/
+npm run lint        # ESLint
+npm run preview
+```
+
+## Backend Architecture & Conventions
+
+- **Controllers only** — do not introduce Minimal API endpoints. Group by feature/resource (e.g. `AuthController`, future `TestsController`, `SubmissionsController`, `ClassroomController`).
+- **DTOs** live under `Api/Contracts/`. Use `record` types. **Never expose `ApplicationUser.Id`** or other internal identifiers in DTOs returned to the client.
+- **EF Core**: extend `AppDbContext` for new entities. Seed reference data in `Program.cs` startup block.
+- **Auth**:
+  - Default scheme is the cookie scheme; protect endpoints with `[Authorize]`.
+  - For role-restricted endpoints use `[Authorize(Roles = "Teacher")]` / `"Student"` — roles are populated as claims at sign-in.
+  - 401/403 are returned as plain status codes (no redirect to a login page) so the SPA can react.
+- **Google tokens**: read/refresh `GoogleAccessToken` / `GoogleRefreshToken` from `ApplicationUser` when calling Google Classroom APIs on behalf of the user.
+- **Nullable reference types** are enabled — handle `null` explicitly.
+
+## Frontend Architecture & Conventions
+
+- **Auth state** flows through `AuthProvider` / `useAuth()` in `src/auth/AuthContext.tsx`. Components must consume the user via `useAuth()`, not by calling `/api/auth/me` directly.
+- **HTTP**: always use the shared `api` axios instance from `src/api/client.ts` — it sets `baseURL` and `withCredentials: true`. Do not use `fetch`.
+- **Forms**: use **react-hook-form** (`useForm`, `useFieldArray`). Wire validation through `register(...)` options and surface errors via `Form.Control.Feedback`.
+- **UI**: prefer **react-bootstrap** components (`Button`, `Form`, `Card`, `Container`, `Navbar`, `Modal`, …). Fall back to plain Bootstrap classes only when no component exists.
+- **Routing**: there is currently no router. The shell switches between `LoginPage` and `HomePage` based on `user`. When student test-link pages are added, introduce `react-router-dom` rather than ad-hoc `window.location` switches.
+- **Login UX**: the main `LoginPage` is **teacher-only** — do not re-add a "sign in as Student" button there. Student authentication will be triggered from the test-link page via `loginWithGoogle('Student')`.
+
+## Auth Endpoints (current)
+
+- `GET  /api/auth/me` — returns the current `UserDto` (`email`, `fullName`, `role`, `hasGoogleLink`). 401 if not signed in.
+- `POST /api/auth/logout` — clears the app cookie.
+- `GET  /api/auth/google-login-teacher` — starts Google OAuth (teacher scopes).
+- `GET  /api/auth/google-callback-teacher` — Google redirect URI; handled by the auth middleware.
+- `GET  /api/auth/google-complete-teacher` — controller action that finalizes app sign-in and redirects to the SPA.
+- Same triplet exists for `student` (kept available for the future test-link flow even though the login UI hides it).
+
+There are **no** local register/login endpoints. Do not reintroduce password-based auth.
 
 ## Development Workflow
 
-1. **For API changes**: Navigate to `Api/` directory, create or modify controller files in the appropriate controller class, then run `dotnet build` and `dotnet run`. Always organize endpoints logically within controllers by feature/resource.
-
-2. **For Client changes**: Navigate to `Client/` directory, run `npm install` if dependencies changed, edit TypeScript/React files in `src/`, and run `npm run dev` to see hot-reload changes. Use react-hook-form for forms, react-bootstrap for UI, and axios for API calls.
-
-3. **Type checking**: 
-   - Client: Run `npm run lint` to validate TypeScript and ESLint rules
-   - API: Build with `dotnet build` to validate C#
-
-4. **Production builds**:
-   - Client: Run `npm run build` from Client directory
-   - API: Run `dotnet publish` to prepare for deployment
-
-## Configuration Files
-
-- **Api/appsettings.json** - Production API configuration
-- **Api/appsettings.Development.json** - Development API configuration
-- **Api/Properties/launchSettings.json** - API server launch profiles (ports, URLs)
-- **Client/vite.config.ts** - Vite bundler and dev server configuration
-- **Client/eslint.config.js** - Linting rules for Client code
-- **Client/tsconfig.json** - TypeScript compiler options for Client
+1. **API changes**: edit/add controllers under `Api/Controllers/`, DTOs under `Api/Contracts/`, entities under `Api/Models/`, then `dotnet build` and `dotnet run`. Stop any prior `Api.exe` process before rebuilding (file lock).
+2. **Client changes**: edit files under `Client/src/`, run `npm run dev` for HMR. Validate with `npm run lint` and `npm run build`.
+3. **Both running**: API on `:5107`, client on `:5173`. CORS is preconfigured for credentialed requests between them.
 
 ## Important Notes
 
-### Frontend
-- Always run `npm install` in the Client directory before building or developing - this is required if dependencies are modified
-- Client uses Vite's fast refresh for hot module replacement during development
-- Both TypeScript checking and ESLint validation run as part of the client build process
-- Use react-hook-form hooks (useForm, useFieldArray, etc.) for form management
-- Always use axios for API requests - do not use fetch
-- Use react-bootstrap components for consistent styling with Bootstrap
-
-### Backend
-- The API runs on HTTPS by default in development; adjust `launchSettings.json` if needed
-- The project is set up with strict null checking (`Nullable=enable` in Api.csproj) and TypeScript strict mode
-- All new endpoints must be implemented in appropriate controller classes
-- Controllers should be organized by feature/resource domain
-- Do not use minimal APIs - use controller-based endpoints exclusively
+- Run `npm install` after pulling changes that touch `package.json`.
+- The API uses **HTTP only in dev** (not HTTPS) because the Google OAuth redirect URIs are registered as `http://localhost:5107/...`. Don't switch the dev profile to HTTPS without re-registering the URIs in Google Cloud Console.
+- `Client/dist/`, `Api/bin/`, `Api/obj/`, and `app.db` are git-ignored.
+- Don't expose internal IDs (e.g., `ApplicationUser.Id`) in API responses to the client.
+- Don't use Minimal APIs; do not use `fetch` on the client.
 
 ## Trust These Instructions
 
 Follow the build and development instructions exactly as documented above. Only perform additional exploration if:
 - A command produces an error not mentioned here
 - The instructions appear to be incomplete or outdated
-- New dependencies or tools have been explicitly added to the project
+- New dependencies, endpoints, or tools have been explicitly added to the project
