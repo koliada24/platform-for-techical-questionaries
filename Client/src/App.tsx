@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { Spinner } from 'react-bootstrap';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
+import { TestsManagementPage } from './pages/TestsManagementPage';
+import { AppLayout } from './components/AppLayout';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -22,13 +25,25 @@ function Shell() {
     );
   }
 
-  return user ? <HomePage /> : <LoginPage />;
+  if (!user) return <LoginPage />;
+
+  return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/tests" element={<TestsManagementPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <Shell />
+      <BrowserRouter>
+        <Shell />
+      </BrowserRouter>
     </AuthProvider>
   );
 }
