@@ -272,6 +272,9 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Frontend build output
+Client/dist/
+
 # Visual Studio 6 build log
 *.plg
 
@@ -382,6 +385,3 @@ fabric.properties
 *-wal
 *-shm
 *.db-journal
-
-# specific databases' names
-discountdb*
