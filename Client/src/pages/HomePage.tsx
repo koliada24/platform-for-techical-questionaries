@@ -1,4 +1,4 @@
-import { Container, Card, Badge } from 'react-bootstrap';
+import { Container, Card } from 'react-bootstrap';
 import { useAuth } from '../auth/AuthContext';
 
 export function HomePage() {
@@ -8,7 +8,7 @@ export function HomePage() {
   return (
     <Container className="py-4">
       <h1 className="h3 mb-4">
-        Welcome, {user.fullName ?? user.email} <Badge bg="info">{user.role}</Badge>
+        Welcome, {user.fullName ?? user.email}
       </h1>
       <Card>
         <Card.Body>
