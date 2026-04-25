@@ -6,5 +6,6 @@ public record UserDto(
     string Email,
     string? FullName,
     UserRole Role,
-    bool HasGoogleLink
+    bool HasGoogleLink,
+    string? PictureUrl
 );

@@ -9,6 +9,7 @@ public class ApplicationUser : IdentityUser
 
     // Google integration fields
     public string? GoogleId { get; set; }
+    public string? PictureUrl { get; set; }
     public string? GoogleAccessToken { get; set; }
     public string? GoogleRefreshToken { get; set; }
     public DateTimeOffset? GoogleTokenExpiresAt { get; set; }

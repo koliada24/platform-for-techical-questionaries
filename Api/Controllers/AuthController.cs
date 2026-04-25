@@ -81,6 +81,7 @@ public class AuthController : ControllerBase
         var googleId = result.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
         var email = result.Principal.FindFirstValue(ClaimTypes.Email);
         var name = result.Principal.FindFirstValue(ClaimTypes.Name);
+        var picture = result.Principal.FindFirstValue("urn:google:picture");
 
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(googleId))
             return Redirect(BuildClientUrl("/login?error=google"));
@@ -95,7 +96,8 @@ public class AuthController : ControllerBase
                 EmailConfirmed = true,
                 FullName = name,
                 Role = role,
-                GoogleId = googleId
+                GoogleId = googleId,
+                PictureUrl = picture
             };
             var create = await _userManager.CreateAsync(user);
             if (!create.Succeeded)
@@ -116,6 +118,7 @@ public class AuthController : ControllerBase
         // Persist Google tokens for later Classroom API calls
         user.GoogleAccessToken = result.Properties?.GetTokenValue("access_token");
         user.GoogleRefreshToken = result.Properties?.GetTokenValue("refresh_token") ?? user.GoogleRefreshToken;
+        if (!string.IsNullOrEmpty(picture)) user.PictureUrl = picture;
         var expires = result.Properties?.GetTokenValue("expires_at");
         if (DateTimeOffset.TryParse(expires, out var exp))
             user.GoogleTokenExpiresAt = exp;
@@ -155,5 +158,5 @@ public class AuthController : ControllerBase
     }
 
     private static UserDto ToDto(ApplicationUser u) =>
-        new(u.Email!, u.FullName, u.Role, !string.IsNullOrEmpty(u.GoogleId));
+        new(u.Email!, u.FullName, u.Role, !string.IsNullOrEmpty(u.GoogleId), u.PictureUrl);
 }

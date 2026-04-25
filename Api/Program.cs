@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using Api.Data;
 using Api.Models;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,6 +66,7 @@ builder.Services
         options.SignInScheme = "External-Teacher";
         options.SaveTokens = true;
         options.AccessType = "offline";
+        options.ClaimActions.MapJsonKey("urn:google:picture", "picture", "url");
         // Teacher needs course management + roster + coursework grading
         options.Scope.Add("https://www.googleapis.com/auth/classroom.courses.readonly");
         options.Scope.Add("https://www.googleapis.com/auth/classroom.rosters.readonly");
@@ -79,6 +82,7 @@ builder.Services
         options.SignInScheme = "External-Student";
         options.SaveTokens = true;
         options.AccessType = "offline";
+        options.ClaimActions.MapJsonKey("urn:google:picture", "picture", "url");
         // Student only needs to view their courses & their own coursework
         options.Scope.Add("https://www.googleapis.com/auth/classroom.courses.readonly");
         options.Scope.Add("https://www.googleapis.com/auth/classroom.coursework.me");

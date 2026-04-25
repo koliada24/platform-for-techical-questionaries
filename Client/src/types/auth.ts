@@ -5,4 +5,5 @@ export interface User {
   fullName: string | null;
   role: UserRole;
   hasGoogleLink: boolean;
+  pictureUrl: string | null;
 }

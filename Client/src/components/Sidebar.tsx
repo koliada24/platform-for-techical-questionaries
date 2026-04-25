@@ -7,7 +7,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   `nav-link text-white rounded px-3 py-2 ${isActive ? 'bg-secondary' : ''}`;
 
 export function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
     <aside
@@ -31,12 +31,6 @@ export function Sidebar() {
           Tests management
         </NavLink>
       </nav>
-
-      <div className="p-2 border-top border-secondary">
-        <button className="btn btn-outline-light w-100 btn-sm" onClick={logout}>
-          Logout
-        </button>
-      </div>
     </aside>
   );
 }
