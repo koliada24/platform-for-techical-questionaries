@@ -101,7 +101,11 @@ npm run preview
 
 ## Key Technologies & Versions
 
+### Backend
 - **.NET**: 10.0
+- **ASP.NET Core**: Web API with Controllers
+
+### Frontend
 - **Node.js**: 18+ (recommended)
 - **npm**: Latest (included with Node.js)
 - **TypeScript**: 6.0.2
@@ -109,12 +113,35 @@ npm run preview
 - **React-DOM**: 19.2.5
 - **Vite**: 8.0.10
 - **ESLint**: 10.2.1
+- **react-hook-form**: Latest (form state management)
+- **bootstrap**: Latest (CSS framework)
+- **react-bootstrap**: Latest (Bootstrap React components)
+- **axios**: Latest (HTTP client for API requests)
+
+## Backend Architecture
+
+### ASP.NET Core Controllers
+- Use ASP.NET Core controllers for all API endpoints
+- Organize controllers logically by feature domain
+- Each controller should handle a specific resource or feature area
+- All HTTP endpoints must be implemented as controller actions
+- Use appropriate HTTP verbs (GET, POST, PUT, DELETE, PATCH)
+- Follow REST conventions for endpoint design
+
+## Frontend Architecture
+
+### React Components & Forms
+- Use **react-hook-form** for all form state management and validation
+- Use **react-bootstrap** components for UI elements (buttons, forms, modals, cards, etc.)
+- Use **bootstrap** classes for styling and layout when react-bootstrap components are not available
+- Use **axios** for all HTTP requests to the backend API
+- Organize components logically by feature in the `src/` directory
 
 ## Development Workflow
 
-1. **For API changes**: Navigate to `Api/` directory, edit C# files in `Program.cs` or create new files as needed, then run `dotnet build` and `dotnet run`.
+1. **For API changes**: Navigate to `Api/` directory, create or modify controller files in the appropriate controller class, then run `dotnet build` and `dotnet run`. Always organize endpoints logically within controllers by feature/resource.
 
-2. **For Client changes**: Navigate to `Client/` directory, run `npm install` if dependencies changed, edit TypeScript/React files in `src/`, and run `npm run dev` to see hot-reload changes.
+2. **For Client changes**: Navigate to `Client/` directory, run `npm install` if dependencies changed, edit TypeScript/React files in `src/`, and run `npm run dev` to see hot-reload changes. Use react-hook-form for forms, react-bootstrap for UI, and axios for API calls.
 
 3. **Type checking**: 
    - Client: Run `npm run lint` to validate TypeScript and ESLint rules
@@ -135,11 +162,20 @@ npm run preview
 
 ## Important Notes
 
+### Frontend
 - Always run `npm install` in the Client directory before building or developing - this is required if dependencies are modified
-- The API runs on HTTPS by default in development; adjust `launchSettings.json` if needed
 - Client uses Vite's fast refresh for hot module replacement during development
 - Both TypeScript checking and ESLint validation run as part of the client build process
+- Use react-hook-form hooks (useForm, useFieldArray, etc.) for form management
+- Always use axios for API requests - do not use fetch
+- Use react-bootstrap components for consistent styling with Bootstrap
+
+### Backend
+- The API runs on HTTPS by default in development; adjust `launchSettings.json` if needed
 - The project is set up with strict null checking (`Nullable=enable` in Api.csproj) and TypeScript strict mode
+- All new endpoints must be implemented in appropriate controller classes
+- Controllers should be organized by feature/resource domain
+- Do not use minimal APIs - use controller-based endpoints exclusively
 
 ## Trust These Instructions
 
