@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TestsManagementPage } from './pages/TestsManagementPage';
+import { TestEditorPage } from './pages/TestEditorPage';
 import { AppLayout } from './components/AppLayout';
 
 function Shell() {
@@ -32,6 +33,8 @@ function Shell() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/tests" element={<TestsManagementPage />} />
+        <Route path="/tests/new" element={<TestEditorPage />} />
+        <Route path="/tests/:id/edit" element={<TestEditorPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

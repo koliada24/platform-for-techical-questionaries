@@ -108,6 +108,10 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+builder.Services.AddHttpClient<Api.Services.GoogleClassroomClient>();
+builder.Services.AddScoped<Api.Services.ITeacherProvider, Api.Services.TeacherProvider>();
+builder.Services.AddScoped<Api.Services.ITestsService, Api.Services.TestsService>();
+
 var app = builder.Build();
 
 // Apply migrations / ensure DB created
