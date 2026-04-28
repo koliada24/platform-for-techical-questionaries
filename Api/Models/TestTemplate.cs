@@ -1,5 +1,14 @@
 namespace Api.Models;
 
+public enum QuestionType
+{
+    SingleAnswer = 0,
+    MultipleAnswers = 1,
+    OpenAnswer = 2,
+    Code = 3,
+    Diagram = 4,
+}
+
 public class TestTemplate
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -20,6 +29,7 @@ public class Question
     public TestTemplate? TestTemplate { get; set; }
     public string Text { get; set; } = null!;
     public int Order { get; set; }
+    public QuestionType Type { get; set; } = QuestionType.SingleAnswer;
     public List<Answer> Answers { get; set; } = new();
 }
 

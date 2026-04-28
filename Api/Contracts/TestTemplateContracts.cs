@@ -5,7 +5,7 @@ namespace Api.Contracts;
 
 public record AnswerDto(string Text, bool IsCorrect, int Order);
 
-public record QuestionDto(Guid Id, string Text, int Order, List<AnswerDto> Answers);
+public record QuestionDto(Guid Id, string Text, int Order, QuestionType Type, List<AnswerDto> Answers);
 
 public record TestTemplateDto(
     Guid Id,
@@ -51,7 +51,8 @@ public record QuestionInput(
     Guid? Id,
     [Required, MinLength(1)] string Text,
     int Order,
-    [MinLength(2)] List<AnswerInput> Answers
+    QuestionType Type,
+    List<AnswerInput> Answers
 );
 
 public record TestTemplateInput(

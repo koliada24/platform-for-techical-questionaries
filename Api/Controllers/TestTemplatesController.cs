@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Api.Contracts;
+using Api.Models;
 using Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -92,6 +93,10 @@ public class TestTemplatesController : ControllerBase
             var q = input.Questions[i];
             if (string.IsNullOrWhiteSpace(q.Text))
                 return $"Question {i + 1} text is required.";
+
+            var needsOptions = q.Type is QuestionType.SingleAnswer or QuestionType.MultipleAnswers;
+            if (!needsOptions)
+                continue;
 
             if (q.Answers is null || q.Answers.Count < 2)
                 return $"Question {i + 1} requires at least 2 answers.";

@@ -34,6 +34,7 @@ public class TestQuestion
 
     public string Text { get; set; } = null!;
     public int Order { get; set; }
+    public QuestionType Type { get; set; } = QuestionType.SingleAnswer;
 
     public List<TestAnswerOption> Options { get; set; } = new();
 }

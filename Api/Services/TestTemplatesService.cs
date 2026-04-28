@@ -104,6 +104,7 @@ public class TestTemplatesService : ITestTemplatesService
     {
         questionToUpdate.Text = questionInput.Text;
         questionToUpdate.Order = questionInput.Order;
+        questionToUpdate.Type = questionInput.Type;
         questionToUpdate.Answers = questionInput.Answers.Select(a => a.ToAnswer()).ToList();
     }
 
@@ -177,6 +178,7 @@ public class TestTemplatesService : ITestTemplatesService
                     {
                         Text = q.Text,
                         Order = q.Order,
+                        Type = q.Type,
                         Options = q.Answers
                             .OrderBy(a => a.Order)
                             .Select(a => new TestAnswerOption
@@ -248,6 +250,7 @@ public class TestTemplatesService : ITestTemplatesService
         TestTemplateId = testTemplateId,
         Text = qIn.Text.Trim(),
         Order = qIn.Order,
+        Type = qIn.Type,
         Answers = MapAnswers(qIn.Answers)
     };
 
@@ -270,7 +273,7 @@ public class TestTemplatesService : ITestTemplatesService
     private static TestTemplateDto MapToDto(TestTemplate t) => new(
         t.Id, t.Name, t.Description, t.TimeLimitMinutes, t.CreatedAt, t.UpdatedAt,
         t.Questions.OrderBy(q => q.Order).Select(q => new QuestionDto(
-            q.Id, q.Text, q.Order,
+            q.Id, q.Text, q.Order, q.Type,
             q.Answers.OrderBy(a => a.Order)
                 .Select(a => new AnswerDto(a.Text, a.IsCorrect, a.Order))
                 .ToList()

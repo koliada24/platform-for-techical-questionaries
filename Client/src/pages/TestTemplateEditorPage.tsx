@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Stack } from 'react-bootstrap';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
-import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import type { Control, FieldErrors, UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { testTemplatesApi } from '../api/testTemplates';
-import type { TestTemplateDto, TestTemplateInput } from '../types/testTemplates';
+import type { QuestionType, TestTemplateDto, TestTemplateInput } from '../types/testTemplates';
 import { PlusIcon, TrashIcon } from '../components/icons';
 
 type FormValues = {
@@ -16,12 +16,27 @@ type FormValues = {
   questions: {
     questionId?: string;
     text: string;
+    type: QuestionType;
     answers: { text: string; isCorrect: boolean }[];
   }[];
 };
 
+const QUESTION_TYPE_OPTIONS: { value: QuestionType; label: string }[] = [
+  { value: 'SingleAnswer', label: 'Single answer' },
+  { value: 'MultipleAnswers', label: 'Multiple answers' },
+  { value: 'OpenAnswer', label: 'Open answer (text)' },
+  { value: 'Code', label: 'Code' },
+  { value: 'Diagram', label: 'Diagram' },
+];
+
+const hasOptions = (t: QuestionType) => t === 'SingleAnswer' || t === 'MultipleAnswers';
+
 const blankAnswer = () => ({ text: '', isCorrect: false });
-const blankQuestion = () => ({ text: '', answers: [blankAnswer(), blankAnswer()] });
+const blankQuestion = () => ({
+  text: '',
+  type: 'SingleAnswer' as QuestionType,
+  answers: [blankAnswer(), blankAnswer()],
+});
 
 function dtoToForm(template: TestTemplateDto | null): FormValues {
   if (!template) {
@@ -41,7 +56,10 @@ function dtoToForm(template: TestTemplateDto | null): FormValues {
     questions: template.questions.map((q) => ({
       questionId: q.id,
       text: q.text,
-      answers: q.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect })),
+      type: q.type,
+      answers: hasOptions(q.type)
+        ? q.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect }))
+        : [],
     })),
   };
 }
@@ -58,7 +76,10 @@ function formToInput(values: FormValues): TestTemplateInput {
       id: q.questionId,
       text: q.text.trim(),
       order: i,
-      answers: q.answers.map((a) => ({ text: a.text.trim(), isCorrect: a.isCorrect })),
+      type: q.type,
+      answers: hasOptions(q.type)
+        ? q.answers.map((a) => ({ text: a.text.trim(), isCorrect: a.isCorrect }))
+        : [],
     })),
   };
 }
@@ -78,6 +99,7 @@ export function TestTemplateEditorPage() {
     watch,
     reset,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ defaultValues: dtoToForm(null) });
 
@@ -242,14 +264,66 @@ export function TestTemplateEditorPage() {
                     <TrashIcon />
                   </Button>
                 </div>
-                <Form.Group className="mb-3">
-                  <Form.Control
-                    placeholder="Question text"
-                    isInvalid={!!errors.questions?.[qi]?.text}
-                    {...register(`questions.${qi}.text`, { required: 'Required' })}
-                  />
-                </Form.Group>
-                <AnswersField control={control} register={register} qi={qi} errors={errors} />
+                <Row className="g-2 mb-3">
+                  <Col xs={12} md={8}>
+                    <Form.Control
+                      placeholder="Question text"
+                      isInvalid={!!errors.questions?.[qi]?.text}
+                      {...register(`questions.${qi}.text`, { required: 'Required' })}
+                    />
+                  </Col>
+                  <Col xs={12} md={4}>
+                    <Controller
+                      control={control}
+                      name={`questions.${qi}.type`}
+                      render={({ field }) => (
+                        <Form.Select
+                          value={field.value}
+                          onChange={(e) => {
+                            const next = e.target.value as QuestionType;
+                            field.onChange(next);
+                            if (hasOptions(next)) {
+                              const cur = (watch(`questions.${qi}.answers`) ?? []) as {
+                                text: string;
+                                isCorrect: boolean;
+                              }[];
+                              if (cur.length < 2) {
+                                setValue(`questions.${qi}.answers`, [
+                                  ...cur,
+                                  ...Array.from({ length: 2 - cur.length }, () => blankAnswer()),
+                                ]);
+                              }
+                              if (next === 'SingleAnswer') {
+                                const correctIdx = cur.findIndex((a) => a.isCorrect);
+                                cur.forEach((_, i) =>
+                                  setValue(
+                                    `questions.${qi}.answers.${i}.isCorrect`,
+                                    i === correctIdx,
+                                  ),
+                                );
+                              }
+                            } else {
+                              setValue(`questions.${qi}.answers`, []);
+                            }
+                          }}
+                        >
+                          {QUESTION_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      )}
+                    />
+                  </Col>
+                </Row>
+                <AnswersField
+                  control={control}
+                  register={register}
+                  setValue={setValue}
+                  qi={qi}
+                  errors={errors}
+                />
               </Card.Body>
             </Card>
           ))}
@@ -272,14 +346,28 @@ interface AnswersProps {
   qi: number;
   control: Control<FormValues>;
   register: UseFormRegister<FormValues>;
+  setValue: UseFormSetValue<FormValues>;
   errors: FieldErrors<FormValues>;
 }
 
-function AnswersField({ qi, control, register, errors }: AnswersProps) {
+function AnswersField({ qi, control, register, setValue, errors }: AnswersProps) {
   const answers = useFieldArray({ control, name: `questions.${qi}.answers` });
+  const type = useWatch({ control, name: `questions.${qi}.type` });
+
+  if (!hasOptions(type)) {
+    return (
+      <div className="text-muted small fst-italic">
+        Answer collection for this question type isn’t implemented yet.
+      </div>
+    );
+  }
+
+  const isSingle = type === 'SingleAnswer';
   return (
     <>
-      <Form.Label className="small text-muted">Answers (mark correct ones)</Form.Label>
+      <Form.Label className="small text-muted">
+        {isSingle ? 'Answers (mark the correct one)' : 'Answers (mark correct ones)'}
+      </Form.Label>
       <Stack gap={2}>
         {answers.fields.map((a, ai) => (
           <div key={a.id} className="d-flex align-items-center gap-2">
@@ -288,9 +376,18 @@ function AnswersField({ qi, control, register, errors }: AnswersProps) {
               name={`questions.${qi}.answers.${ai}.isCorrect`}
               render={({ field }) => (
                 <Form.Check
-                  type="checkbox"
+                  type={isSingle ? 'radio' : 'checkbox'}
+                  name={isSingle ? `questions.${qi}.correct` : undefined}
                   checked={!!field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
+                  onChange={() => {
+                    if (isSingle) {
+                      answers.fields.forEach((_, i) =>
+                        setValue(`questions.${qi}.answers.${i}.isCorrect`, i === ai),
+                      );
+                    } else {
+                      field.onChange(!field.value);
+                    }
+                  }}
                   title="Correct?"
                 />
               )}

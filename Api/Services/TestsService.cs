@@ -131,6 +131,7 @@ public class TestsService : ITestsService
 
         var questions = await _db.TestQuestions
             .Where(q => q.TestId == attempt.TestId)
+            .Where(q => q.Type == QuestionType.SingleAnswer || q.Type == QuestionType.MultipleAnswers)
             .Select(q => new
             {
                 q.Id,

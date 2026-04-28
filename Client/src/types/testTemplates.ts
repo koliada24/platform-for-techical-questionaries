@@ -1,3 +1,10 @@
+export type QuestionType =
+  | 'SingleAnswer'
+  | 'MultipleAnswers'
+  | 'OpenAnswer'
+  | 'Code'
+  | 'Diagram';
+
 export interface AnswerDto {
   text: string;
   isCorrect: boolean;
@@ -8,6 +15,7 @@ export interface QuestionDto {
   id: string;
   text: string;
   order: number;
+  type: QuestionType;
   answers: AnswerDto[];
 }
 
@@ -40,6 +48,7 @@ export interface QuestionInput {
   id?: string;
   text: string;
   order: number;
+  type: QuestionType;
   answers: AnswerInput[];
 }
 

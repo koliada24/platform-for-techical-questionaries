@@ -61,6 +61,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Question>(e =>
         {
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
+            e.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
             e.HasOne(x => x.TestTemplate)
                 .WithMany(t => t.Questions)
                 .HasForeignKey(x => x.TestTemplateId)
@@ -93,6 +94,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TestQuestion>(e =>
         {
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
+            e.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
             e.HasOne(x => x.Test)
                 .WithMany(t => t.Questions)
                 .HasForeignKey(x => x.TestId)
