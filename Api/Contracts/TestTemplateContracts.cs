@@ -1,3 +1,4 @@
+using Api.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace Api.Contracts;
@@ -26,10 +27,25 @@ public record TestTemplateSummaryDto(
     DateTimeOffset UpdatedAt
 );
 
-public record AnswerInput(
-    [Required] string Text,
-    bool IsCorrect
-);
+public class AnswerInput
+{
+    [Required]
+    public string Text { get; set; } = string.Empty;
+
+    public bool IsCorrect { get; set; } = false;
+
+    public int Order { get; set; } = 0;
+
+    public Answer ToAnswer()
+    {
+        return new Answer
+        {
+            Text = Text,
+            IsCorrect = IsCorrect,
+            Order = Order
+        };
+    }
+}
 
 public record QuestionInput(
     Guid? Id,

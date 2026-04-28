@@ -80,8 +80,15 @@ public class TestTemplatesService : ITestTemplatesService
         template.TimeLimitMinutes = input.TimeLimitMinutes;
         template.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var questionsToStay = input.Questions.Where(q => q.Id != null).Select(x => x.Id);
-        template.Questions.RemoveAll(q => !questionsToStay.Contains(q.Id));
+        var questionsToStay = input.Questions.Where(q => q.Id != null);
+        var questionsToStayIds = questionsToStay.Select(x => x.Id);
+
+        foreach (var question in questionsToStay)
+        {
+            var questionToUpdate = template.Questions.First(q => q.Id == question.Id);
+            UpdateQuestion(questionToUpdate, question);
+        }
+        template.Questions.RemoveAll(q => !questionsToStayIds.Contains(q.Id));
 
         var questionsToAdd = input.Questions
             .Where(q => q.Id == null)
@@ -91,6 +98,13 @@ public class TestTemplatesService : ITestTemplatesService
         await _db.SaveChangesAsync(ct);
 
         return MapToDto(template);
+    }
+
+    private void UpdateQuestion(Question questionToUpdate, QuestionInput questionInput)
+    {
+        questionToUpdate.Text = questionInput.Text;
+        questionToUpdate.Order = questionInput.Order;
+        questionToUpdate.Answers = questionInput.Answers.Select(a => a.ToAnswer()).ToList();
     }
 
     public async Task<bool> DeleteAsync(string teacherId, Guid id, CancellationToken ct = default)
