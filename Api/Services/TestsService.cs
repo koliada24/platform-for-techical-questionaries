@@ -34,6 +34,7 @@ public class TestsService : ITestsService
         var test = await _db.Tests
             .Include(t => t.Questions.OrderBy(q => q.Order))
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
+
         return test is null ? null : MapToDto(test);
     }
 
@@ -46,9 +47,15 @@ public class TestsService : ITestsService
             Description = NormalizeDescription(input.Description),
             TimeLimitMinutes = input.TimeLimitMinutes,
         };
-        ApplyQuestions(test, input);
+
+        foreach (var qIn in input.Questions)
+        {
+            test.Questions.Add(ToQuestion(qIn, test.Id));
+        }
+
         _db.Tests.Add(test);
         await _db.SaveChangesAsync(ct);
+
         return MapToDto(test);
     }
 
@@ -73,15 +80,22 @@ public class TestsService : ITestsService
         _db.Questions.AddRange(questionsToAdd);
 
         await _db.SaveChangesAsync(ct);
+
         return MapToDto(test);
     }
 
     public async Task<bool> DeleteAsync(string teacherId, Guid id, CancellationToken ct = default)
     {
         var test = await _db.Tests.FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
-        if (test is null) return false;
+        
+        if (test is null)
+        {
+            return false;
+        }
+
         _db.Tests.Remove(test);
         await _db.SaveChangesAsync(ct);
+
         return true;
     }
 
@@ -90,10 +104,18 @@ public class TestsService : ITestsService
         var test = await _db.Tests
             .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
-        if (test is null) return new PublishResult.TestNotFound();
+
+        if (test is null)
+        {
+            return new PublishResult.TestNotFound();
+        }
 
         var teacher = await _teacherProvider.GetTeacherAsync(teacherId, ct);
-        if (teacher is null) return new PublishResult.ClassroomFailure("Teacher account not found.");
+
+        if (teacher is null)
+        {
+            return new PublishResult.ClassroomFailure("Teacher account not found.");
+        }
 
         List<GoogleClassroomClient.CourseInfo> courses;
         try
@@ -107,7 +129,11 @@ public class TestsService : ITestsService
 
         var byId = courses.ToDictionary(c => c.Id, c => c);
         var unknown = request.CourseIds.Where(cid => !byId.ContainsKey(cid)).ToList();
-        if (unknown.Count > 0) return new PublishResult.UnknownCourses(unknown);
+
+        if (unknown.Count > 0)
+        {
+            return new PublishResult.UnknownCourses(unknown);
+        }
 
         var existing = test.Assignments.ToDictionary(a => a.GoogleCourseId, a => a);
         foreach (var cid in request.CourseIds.Distinct())
@@ -135,15 +161,9 @@ public class TestsService : ITestsService
         return new PublishResult.Success(dto);
     }
 
-    private static string? NormalizeDescription(string? description) =>
-        string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-
-    private static void ApplyQuestions(Test test, TestInput input)
+    private static string? NormalizeDescription(string? description)
     {
-        foreach (var qIn in input.Questions)
-        {
-            test.Questions.Add(ToQuestion(qIn, test.Id));
-        }
+        return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
     }
 
     private static Question ToQuestion(QuestionInput qIn, Guid testId) => new()

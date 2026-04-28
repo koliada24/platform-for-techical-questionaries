@@ -17,6 +17,8 @@ public class TeacherProvider : ITeacherProvider
         _userManager = userManager;
     }
 
-    public Task<ApplicationUser?> GetTeacherAsync(string teacherId, CancellationToken ct = default) =>
-        _userManager.FindByIdAsync(teacherId);
+    public async Task<ApplicationUser?> GetTeacherAsync(string teacherId, CancellationToken ct = default)
+    {
+        return await _userManager.FindByIdAsync(teacherId);
+    }
 }
