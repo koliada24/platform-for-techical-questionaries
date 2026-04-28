@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal, Spinner, Stack } from 'react-bootstrap';
 import axios from 'axios';
-import { classroomApi, testsApi } from '../api/tests';
-import type { ClassroomCourseDto, TestSummaryDto } from '../types/tests';
+import { classroomApi, testTemplatesApi } from '../api/testTemplates';
+import type { ClassroomCourseDto, TestTemplateSummaryDto } from '../types/testTemplates';
 
 interface Props {
   show: boolean;
-  test: TestSummaryDto | null;
+  testTemplate: TestTemplateSummaryDto | null;
   onHide: () => void;
   onPublished: () => void;
 }
 
-export function PublishTestModal({ show, test, onHide, onPublished }: Props) {
+export function PublishTestTemplateModal({ show, testTemplate, onHide, onPublished }: Props) {
   const [courses, setCourses] = useState<ClassroomCourseDto[] | null>(null);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [coursesError, setCoursesError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export function PublishTestModal({ show, test, onHide, onPublished }: Props) {
   };
 
   const handlePublish = async () => {
-    if (!test) return;
+    if (!testTemplate) return;
     setSubmitError(null);
     if (selected.size === 0) {
       setSubmitError('Select at least one course.');
@@ -75,7 +75,7 @@ export function PublishTestModal({ show, test, onHide, onPublished }: Props) {
     }
     setSubmitting(true);
     try {
-      await testsApi.publish(test.id, {
+      await testTemplatesApi.publish(testTemplate.id, {
         courseIds: Array.from(selected),
         closesAt: closesIso,
       });
@@ -93,7 +93,7 @@ export function PublishTestModal({ show, test, onHide, onPublished }: Props) {
   return (
     <Modal show={show} onHide={submitting ? undefined : onHide} size="lg">
       <Modal.Header closeButton={!submitting}>
-        <Modal.Title>Publish test{test ? `: ${test.name}` : ''}</Modal.Title>
+        <Modal.Title>Publish test{testTemplate ? `: ${testTemplate.name}` : ''}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {submitError && <Alert variant="danger">{submitError}</Alert>}
@@ -144,7 +144,7 @@ export function PublishTestModal({ show, test, onHide, onPublished }: Props) {
         <Button
           variant="primary"
           onClick={handlePublish}
-          disabled={submitting || loadingCourses || !test}
+          disabled={submitting || loadingCourses || !testTemplate}
         >
           {submitting ? 'Publishing…' : 'Publish'}
         </Button>

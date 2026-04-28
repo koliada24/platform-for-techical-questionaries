@@ -27,7 +27,7 @@ export function Sidebar() {
         <NavLink to="/" end className={linkClass}>
           Home
         </NavLink>
-        <NavLink to="/tests" className={linkClass}>
+        <NavLink to="/test-templates" className={linkClass}>
           Tests management
         </NavLink>
       </nav>

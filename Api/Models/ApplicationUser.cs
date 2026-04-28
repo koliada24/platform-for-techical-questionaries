@@ -6,8 +6,6 @@ public class ApplicationUser : IdentityUser
 {
     public string? FullName { get; set; }
     public UserRole Role { get; set; } = UserRole.Student;
-
-    // Google integration fields
     public string? GoogleId { get; set; }
     public string? PictureUrl { get; set; }
     public string? GoogleAccessToken { get; set; }

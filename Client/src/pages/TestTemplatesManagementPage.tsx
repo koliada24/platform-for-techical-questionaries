@@ -2,30 +2,30 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Container, Spinner, Stack } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { testsApi } from '../api/tests';
-import type { TestSummaryDto } from '../types/tests';
+import { testTemplatesApi } from '../api/testTemplates';
+import type { TestTemplateSummaryDto } from '../types/testTemplates';
 import { PencilIcon, PlayIcon, PlusIcon, TrashIcon } from '../components/icons';
 import { ConfirmDeleteModal } from '../components/ConfirmDeleteModal';
-import { PublishTestModal } from '../components/PublishTestModal';
+import { PublishTestTemplateModal } from '../components/PublishTestTemplateModal';
 
-export function TestsManagementPage() {
+export function TestTemplatesManagementPage() {
   const navigate = useNavigate();
-  const [tests, setTests] = useState<TestSummaryDto[] | null>(null);
+  const [templates, setTemplates] = useState<TestTemplateSummaryDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [deleteTarget, setDeleteTarget] = useState<TestSummaryDto | null>(null);
-  const [publishTarget, setPublishTarget] = useState<TestSummaryDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TestTemplateSummaryDto | null>(null);
+  const [publishTarget, setPublishTarget] = useState<TestTemplateSummaryDto | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const data = await testsApi.list();
-      setTests(data);
+      const data = await testTemplatesApi.list();
+      setTemplates(data);
     } catch (e) {
       let msg = 'Failed to load tests.';
       if (axios.isAxiosError(e)) msg = e.response?.data?.error ?? msg;
       setError(msg);
-      setTests([]);
+      setTemplates([]);
     }
   }, []);
 
@@ -37,18 +37,18 @@ export function TestsManagementPage() {
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">Tests management</h1>
-        <Button variant="primary" onClick={() => navigate('/tests/new')}>
+        <Button variant="primary" onClick={() => navigate('/test-templates/new')}>
           <PlusIcon /> Create test
         </Button>
       </div>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      {tests === null ? (
+      {templates === null ? (
         <div className="text-muted d-flex align-items-center gap-2">
           <Spinner animation="border" size="sm" /> Loading…
         </div>
-      ) : tests.length === 0 ? (
+      ) : templates.length === 0 ? (
         <Card>
           <Card.Body className="text-muted">
             No tests yet. Click <strong>Create test</strong> to add your first one.
@@ -56,7 +56,7 @@ export function TestsManagementPage() {
         </Card>
       ) : (
         <Stack gap={3}>
-          {tests.map((t) => (
+          {templates.map((t) => (
             <Card key={t.id}>
               <Card.Body className="d-flex justify-content-between align-items-start gap-3">
                 <div className="flex-grow-1">
@@ -89,7 +89,7 @@ export function TestsManagementPage() {
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    onClick={() => navigate(`/tests/${t.id}/edit`)}
+                    onClick={() => navigate(`/test-templates/${t.id}/edit`)}
                     title="Edit"
                   >
                     <PencilIcon />
@@ -119,15 +119,15 @@ export function TestsManagementPage() {
         }
         onConfirm={async () => {
           if (!deleteTarget) return;
-          await testsApi.remove(deleteTarget.id);
+          await testTemplatesApi.remove(deleteTarget.id);
           await reload();
         }}
         onHide={() => setDeleteTarget(null)}
       />
 
-      <PublishTestModal
+      <PublishTestTemplateModal
         show={!!publishTarget}
-        test={publishTarget}
+        testTemplate={publishTarget}
         onHide={() => setPublishTarget(null)}
         onPublished={() => void reload()}
       />

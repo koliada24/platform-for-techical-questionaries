@@ -4,8 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
-import { TestsManagementPage } from './pages/TestsManagementPage';
-import { TestEditorPage } from './pages/TestEditorPage';
+import { TestTemplatesManagementPage } from './pages/TestTemplatesManagementPage';
+import { TestTemplateEditorPage } from './pages/TestTemplateEditorPage';
 import { AppLayout } from './components/AppLayout';
 
 function Shell() {
@@ -32,9 +32,9 @@ function Shell() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/tests" element={<TestsManagementPage />} />
-        <Route path="/tests/new" element={<TestEditorPage />} />
-        <Route path="/tests/:id/edit" element={<TestEditorPage />} />
+        <Route path="/test-templates" element={<TestTemplatesManagementPage />} />
+        <Route path="/test-templates/new" element={<TestTemplateEditorPage />} />
+        <Route path="/test-templates/:id/edit" element={<TestTemplateEditorPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

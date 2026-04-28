@@ -11,9 +11,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
-    public DbSet<Test> Tests => Set<Test>();
+    public DbSet<TestTemplate> TestTemplates => Set<TestTemplate>();
     public DbSet<Question> Questions => Set<Question>();
-    public DbSet<TestAssignment> TestAssignments => Set<TestAssignment>();
+    public DbSet<TestTemplateAssignment> TestTemplateAssignments => Set<TestTemplateAssignment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -38,7 +38,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             }
         }
 
-        builder.Entity<Test>(e =>
+        builder.Entity<TestTemplate>(e =>
         {
             e.Property(x => x.Name).IsRequired().HasMaxLength(200);
             e.Property(x => x.Description).HasMaxLength(2000);
@@ -52,9 +52,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Question>(e =>
         {
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
-            e.HasOne(x => x.Test)
+            e.HasOne(x => x.TestTemplate)
                 .WithMany(t => t.Questions)
-                .HasForeignKey(x => x.TestId)
+                .HasForeignKey(x => x.TestTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Answers are stored as JSON inside the Questions table.
@@ -65,15 +65,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             });
         });
 
-        builder.Entity<TestAssignment>(e =>
+        builder.Entity<TestTemplateAssignment>(e =>
         {
             e.Property(x => x.GoogleCourseId).IsRequired().HasMaxLength(100);
             e.Property(x => x.GoogleCourseName).IsRequired().HasMaxLength(300);
-            e.HasOne(x => x.Test)
+            e.HasOne(x => x.TestTemplate)
                 .WithMany(t => t.Assignments)
-                .HasForeignKey(x => x.TestId)
+                .HasForeignKey(x => x.TestTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
-            e.HasIndex(x => new { x.TestId, x.GoogleCourseId }).IsUnique();
+            e.HasIndex(x => new { x.TestTemplateId, x.GoogleCourseId }).IsUnique();
         });
     }
 }

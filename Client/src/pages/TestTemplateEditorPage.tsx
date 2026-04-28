@@ -4,8 +4,8 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { testsApi } from '../api/tests';
-import type { TestDto, TestInput } from '../types/tests';
+import { testTemplatesApi } from '../api/testTemplates';
+import type { TestTemplateDto, TestTemplateInput } from '../types/testTemplates';
 import { PlusIcon, TrashIcon } from '../components/icons';
 
 type FormValues = {
@@ -23,8 +23,8 @@ type FormValues = {
 const blankAnswer = () => ({ text: '', isCorrect: false });
 const blankQuestion = () => ({ text: '', answers: [blankAnswer(), blankAnswer()] });
 
-function dtoToForm(test: TestDto | null): FormValues {
-  if (!test) {
+function dtoToForm(template: TestTemplateDto | null): FormValues {
+  if (!template) {
     return {
       name: '',
       description: '',
@@ -34,11 +34,11 @@ function dtoToForm(test: TestDto | null): FormValues {
     };
   }
   return {
-    name: test.name,
-    description: test.description ?? '',
-    hasTimeLimit: test.timeLimitMinutes != null,
-    timeLimitMinutes: test.timeLimitMinutes ?? '',
-    questions: test.questions.map((q) => ({
+    name: template.name,
+    description: template.description ?? '',
+    hasTimeLimit: template.timeLimitMinutes != null,
+    timeLimitMinutes: template.timeLimitMinutes ?? '',
+    questions: template.questions.map((q) => ({
       questionId: q.id,
       text: q.text,
       answers: q.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect })),
@@ -46,7 +46,7 @@ function dtoToForm(test: TestDto | null): FormValues {
   };
 }
 
-function formToInput(values: FormValues): TestInput {
+function formToInput(values: FormValues): TestTemplateInput {
   return {
     name: values.name.trim(),
     description: values.description.trim() ? values.description.trim() : null,
@@ -63,7 +63,7 @@ function formToInput(values: FormValues): TestInput {
   };
 }
 
-export function TestEditorPage() {
+export function TestTemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const navigate = useNavigate();
@@ -88,7 +88,7 @@ export function TestEditorPage() {
     if (!isEdit) return;
     let cancelled = false;
     setLoading(true);
-    testsApi
+    testTemplatesApi
       .get(id!)
       .then((dto) => {
         if (cancelled) return;
@@ -112,11 +112,11 @@ export function TestEditorPage() {
     const payload = formToInput(values);
     try {
       if (isEdit && id) {
-        await testsApi.update(id, payload);
+        await testTemplatesApi.update(id, payload);
       } else {
-        await testsApi.create(payload);
+        await testTemplatesApi.create(payload);
       }
-      navigate('/tests');
+      navigate('/test-templates');
     } catch (e) {
       let msg = 'Failed to save test.';
       if (axios.isAxiosError(e)) {
@@ -141,7 +141,7 @@ export function TestEditorPage() {
     return (
       <Container className="py-4">
         <Alert variant="danger">{loadError}</Alert>
-        <Button variant="secondary" onClick={() => navigate('/tests')}>
+        <Button variant="secondary" onClick={() => navigate('/test-templates')}>
           Back to tests
         </Button>
       </Container>
@@ -152,7 +152,7 @@ export function TestEditorPage() {
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3 mb-0">{isEdit ? 'Edit test' : 'Create test'}</h1>
-        <Button variant="link" onClick={() => navigate('/tests')}>
+        <Button variant="link" onClick={() => navigate('/test-templates')}>
           ← Back to tests
         </Button>
       </div>
@@ -256,7 +256,7 @@ export function TestEditorPage() {
         </Stack>
 
         <div className="d-flex gap-2 justify-content-end">
-          <Button variant="secondary" onClick={() => navigate('/tests')} disabled={isSubmitting}>
+          <Button variant="secondary" onClick={() => navigate('/test-templates')} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting}>

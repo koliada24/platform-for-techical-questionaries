@@ -34,7 +34,10 @@ public class GoogleClassroomClient
     public async Task<List<CourseInfo>> GetTeacherCoursesAsync(ApplicationUser user, CancellationToken ct = default)
     {
         var token = await GetValidAccessTokenAsync(user, ct);
-        if (token is null) throw new InvalidOperationException("No Google access token available for this user.");
+        if (token is null)
+        {
+            throw new InvalidOperationException("No Google access token available for this user.");
+        }
 
         var url = "https://classroom.googleapis.com/v1/courses?teacherId=me&courseStates=ACTIVE";
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
@@ -45,7 +48,12 @@ public class GoogleClassroomClient
         {
             // Refresh once and retry
             token = await RefreshAccessTokenAsync(user, ct);
-            if (token is null) throw new InvalidOperationException("Failed to refresh Google access token.");
+
+            if (token is null)
+            {
+                throw new InvalidOperationException("Failed to refresh Google access token.");
+            }
+
             using var req2 = new HttpRequestMessage(HttpMethod.Get, url);
             req2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             using var resp2 = await _http.SendAsync(req2, ct);
@@ -74,11 +82,18 @@ public class GoogleClassroomClient
 
     private async Task<string?> RefreshAccessTokenAsync(ApplicationUser user, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(user.GoogleRefreshToken)) return null;
+        if (string.IsNullOrEmpty(user.GoogleRefreshToken))
+        {
+            return null;
+        }
 
         var clientId = _config["Google:ClientId"];
         var clientSecret = _config["Google:ClientSecret"];
-        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret)) return null;
+        
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+        {
+            return null;
+        }
 
         using var content = new FormUrlEncodedContent(new[]
         {
@@ -89,6 +104,7 @@ public class GoogleClassroomClient
         });
 
         using var resp = await _http.PostAsync("https://oauth2.googleapis.com/token", content, ct);
+        
         if (!resp.IsSuccessStatusCode)
         {
             _logger.LogWarning("Google token refresh failed: {Status}", resp.StatusCode);
@@ -96,12 +112,18 @@ public class GoogleClassroomClient
         }
 
         var token = await resp.Content.ReadFromJsonAsync<TokenResponse>(cancellationToken: ct);
-        if (token is null || string.IsNullOrEmpty(token.AccessToken)) return null;
+
+        if (token is null || string.IsNullOrEmpty(token.AccessToken))
+        {
+            return null;
+        }
 
         user.GoogleAccessToken = token.AccessToken;
         user.GoogleTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn > 0 ? token.ExpiresIn : 3500);
         await _userManager.UpdateAsync(user);
+
         await _db.SaveChangesAsync(ct);
+
         return token.AccessToken;
     }
 

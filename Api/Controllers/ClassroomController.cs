@@ -25,7 +25,12 @@ public class ClassroomController : ControllerBase
     public async Task<IActionResult> GetCourses()
     {
         var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
         try
         {
             var courses = await _classroom.GetTeacherCoursesAsync(user);

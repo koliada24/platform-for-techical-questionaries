@@ -6,7 +6,7 @@ public record AnswerDto(string Text, bool IsCorrect, int Order);
 
 public record QuestionDto(Guid Id, string Text, int Order, List<AnswerDto> Answers);
 
-public record TestDto(
+public record TestTemplateDto(
     Guid Id,
     string Name,
     string? Description,
@@ -16,7 +16,7 @@ public record TestDto(
     List<QuestionDto> Questions
 );
 
-public record TestSummaryDto(
+public record TestTemplateSummaryDto(
     Guid Id,
     string Name,
     string? Description,
@@ -38,7 +38,7 @@ public record QuestionInput(
     [MinLength(2)] List<AnswerInput> Answers
 );
 
-public record TestInput(
+public record TestTemplateInput(
     [Required, MinLength(1), MaxLength(200)] string Name,
     [MaxLength(2000)] string? Description,
     [Range(1, 600)] int? TimeLimitMinutes,
@@ -48,12 +48,12 @@ public record TestInput(
 // Google Classroom
 public record ClassroomCourseDto(string Id, string Name, string? Section, string? Description);
 
-public record PublishTestRequest(
+public record PublishTestTemplateRequest(
     [Required, MinLength(1)] List<string> CourseIds,
     [Required] DateTimeOffset ClosesAt
 );
 
-public record TestAssignmentDto(
+public record TestTemplateAssignmentDto(
     Guid Id,
     string GoogleCourseId,
     string GoogleCourseName,

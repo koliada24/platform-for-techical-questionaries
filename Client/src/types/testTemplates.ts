@@ -11,7 +11,7 @@ export interface QuestionDto {
   answers: AnswerDto[];
 }
 
-export interface TestDto {
+export interface TestTemplateDto {
   id: string;
   name: string;
   description: string | null;
@@ -21,7 +21,7 @@ export interface TestDto {
   questions: QuestionDto[];
 }
 
-export interface TestSummaryDto {
+export interface TestTemplateSummaryDto {
   id: string;
   name: string;
   description: string | null;
@@ -43,7 +43,7 @@ export interface QuestionInput {
   answers: AnswerInput[];
 }
 
-export interface TestInput {
+export interface TestTemplateInput {
   name: string;
   description: string | null;
   timeLimitMinutes: number | null;
@@ -57,12 +57,12 @@ export interface ClassroomCourseDto {
   description: string | null;
 }
 
-export interface PublishTestRequest {
+export interface PublishTestTemplateRequest {
   courseIds: string[];
   closesAt: string; // ISO
 }
 
-export interface TestAssignmentDto {
+export interface TestTemplateAssignmentDto {
   id: string;
   googleCourseId: string;
   googleCourseName: string;

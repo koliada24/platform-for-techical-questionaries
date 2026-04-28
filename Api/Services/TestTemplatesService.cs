@@ -5,42 +5,42 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services;
 
-public class TestsService : ITestsService
+public class TestTemplatesService : ITestTemplatesService
 {
     private readonly AppDbContext _db;
     private readonly GoogleClassroomClient _classroom;
     private readonly ITeacherProvider _teacherProvider;
 
-    public TestsService(AppDbContext db, GoogleClassroomClient classroom, ITeacherProvider teacherProvider)
+    public TestTemplatesService(AppDbContext db, GoogleClassroomClient classroom, ITeacherProvider teacherProvider)
     {
         _db = db;
         _classroom = classroom;
         _teacherProvider = teacherProvider;
     }
 
-    public Task<List<TestSummaryDto>> ListAsync(string teacherId, CancellationToken ct = default)
+    public Task<List<TestTemplateSummaryDto>> ListAsync(string teacherId, CancellationToken ct = default)
     {
-        return _db.Tests
+        return _db.TestTemplates
             .Where(t => t.TeacherId == teacherId)
             .OrderByDescending(t => t.UpdatedAt)
-            .Select(t => new TestSummaryDto(
+            .Select(t => new TestTemplateSummaryDto(
                 t.Id, t.Name, t.Description, t.TimeLimitMinutes,
                 t.Questions.Count, t.CreatedAt, t.UpdatedAt))
             .ToListAsync(ct);
     }
 
-    public async Task<TestDto?> GetAsync(string teacherId, Guid id, CancellationToken ct = default)
+    public async Task<TestTemplateDto?> GetAsync(string teacherId, Guid id, CancellationToken ct = default)
     {
-        var test = await _db.Tests
+        var template = await _db.TestTemplates
             .Include(t => t.Questions.OrderBy(q => q.Order))
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
 
-        return test is null ? null : MapToDto(test);
+        return template is null ? null : MapToDto(template);
     }
 
-    public async Task<TestDto> CreateAsync(string teacherId, TestInput input, CancellationToken ct = default)
+    public async Task<TestTemplateDto> CreateAsync(string teacherId, TestTemplateInput input, CancellationToken ct = default)
     {
-        var test = new Test
+        var template = new TestTemplate
         {
             TeacherId = teacherId,
             Name = input.Name.Trim(),
@@ -50,64 +50,64 @@ public class TestsService : ITestsService
 
         foreach (var qIn in input.Questions)
         {
-            test.Questions.Add(ToQuestion(qIn, test.Id));
+            template.Questions.Add(ToQuestion(qIn, template.Id));
         }
 
-        _db.Tests.Add(test);
+        _db.TestTemplates.Add(template);
         await _db.SaveChangesAsync(ct);
 
-        return MapToDto(test);
+        return MapToDto(template);
     }
 
-    public async Task<TestDto?> UpdateAsync(string teacherId, Guid id, TestInput input, CancellationToken ct = default)
+    public async Task<TestTemplateDto?> UpdateAsync(string teacherId, Guid id, TestTemplateInput input, CancellationToken ct = default)
     {
-        var test = await _db.Tests
+        var template = await _db.TestTemplates
             .Include(t => t.Questions)
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
-        if (test is null) return null;
+        if (template is null) return null;
 
-        test.Name = input.Name.Trim();
-        test.Description = NormalizeDescription(input.Description);
-        test.TimeLimitMinutes = input.TimeLimitMinutes;
-        test.UpdatedAt = DateTimeOffset.UtcNow;
+        template.Name = input.Name.Trim();
+        template.Description = NormalizeDescription(input.Description);
+        template.TimeLimitMinutes = input.TimeLimitMinutes;
+        template.UpdatedAt = DateTimeOffset.UtcNow;
 
         var questionsToStay = input.Questions.Where(q => q.Id != null).Select(x => x.Id);
-        test.Questions.RemoveAll(q => !questionsToStay.Contains(q.Id));
+        template.Questions.RemoveAll(q => !questionsToStay.Contains(q.Id));
 
         var questionsToAdd = input.Questions
             .Where(q => q.Id == null)
-            .Select(q => ToQuestion(q, test.Id)).ToArray();
+            .Select(q => ToQuestion(q, template.Id)).ToArray();
         _db.Questions.AddRange(questionsToAdd);
 
         await _db.SaveChangesAsync(ct);
 
-        return MapToDto(test);
+        return MapToDto(template);
     }
 
     public async Task<bool> DeleteAsync(string teacherId, Guid id, CancellationToken ct = default)
     {
-        var test = await _db.Tests.FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
+        var template = await _db.TestTemplates.FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
         
-        if (test is null)
+        if (template is null)
         {
             return false;
         }
 
-        _db.Tests.Remove(test);
+        _db.TestTemplates.Remove(template);
         await _db.SaveChangesAsync(ct);
 
         return true;
     }
 
-    public async Task<PublishResult> PublishAsync(string teacherId, Guid id, PublishTestRequest request, CancellationToken ct = default)
+    public async Task<PublishResult> PublishAsync(string teacherId, Guid id, PublishTestTemplateRequest request, CancellationToken ct = default)
     {
-        var test = await _db.Tests
+        var template = await _db.TestTemplates
             .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
 
-        if (test is null)
+        if (template is null)
         {
-            return new PublishResult.TestNotFound();
+            return new PublishResult.TestTemplateNotFound();
         }
 
         var teacher = await _teacherProvider.GetTeacherAsync(teacherId, ct);
@@ -135,7 +135,7 @@ public class TestsService : ITestsService
             return new PublishResult.UnknownCourses(unknown);
         }
 
-        var existing = test.Assignments.ToDictionary(a => a.GoogleCourseId, a => a);
+        var existing = template.Assignments.ToDictionary(a => a.GoogleCourseId, a => a);
         foreach (var cid in request.CourseIds.Distinct())
         {
             if (existing.TryGetValue(cid, out var current))
@@ -144,19 +144,19 @@ public class TestsService : ITestsService
                 continue;
             }
             var info = byId[cid];
-            test.Assignments.Add(new TestAssignment
+            template.Assignments.Add(new TestTemplateAssignment
             {
-                TestId = test.Id,
+                TestTemplateId = template.Id,
                 GoogleCourseId = cid,
                 GoogleCourseName = info.Name,
                 ClosesAt = request.ClosesAt
             });
         }
-        test.UpdatedAt = DateTimeOffset.UtcNow;
+        template.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        var dto = test.Assignments
-            .Select(a => new TestAssignmentDto(a.Id, a.GoogleCourseId, a.GoogleCourseName, a.ClosesAt, a.CreatedAt))
+        var dto = template.Assignments
+            .Select(a => new TestTemplateAssignmentDto(a.Id, a.GoogleCourseId, a.GoogleCourseName, a.ClosesAt, a.CreatedAt))
             .ToList();
         return new PublishResult.Success(dto);
     }
@@ -166,10 +166,10 @@ public class TestsService : ITestsService
         return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
     }
 
-    private static Question ToQuestion(QuestionInput qIn, Guid testId) => new()
+    private static Question ToQuestion(QuestionInput qIn, Guid testTemplateId) => new()
     {
         Id = Guid.NewGuid(),
-        TestId = testId,
+        TestTemplateId = testTemplateId,
         Text = qIn.Text.Trim(),
         Order = qIn.Order,
         Answers = MapAnswers(qIn.Answers)
@@ -191,7 +191,7 @@ public class TestsService : ITestsService
         return result;
     }
 
-    private static TestDto MapToDto(Test t) => new(
+    private static TestTemplateDto MapToDto(TestTemplate t) => new(
         t.Id, t.Name, t.Description, t.TimeLimitMinutes, t.CreatedAt, t.UpdatedAt,
         t.Questions.OrderBy(q => q.Order).Select(q => new QuestionDto(
             q.Id, q.Text, q.Order,
