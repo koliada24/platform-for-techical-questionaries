@@ -36,7 +36,7 @@ export function TestTemplatesManagementPage() {
   return (
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h3 mb-0">Tests management</h1>
+        <h1 className="h3 mb-0">Test Templates Management</h1>
         <Button variant="primary" onClick={() => navigate('/test-templates/new')}>
           <PlusIcon /> Create test
         </Button>
