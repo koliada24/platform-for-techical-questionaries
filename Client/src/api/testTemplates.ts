@@ -2,7 +2,7 @@ import { api } from './client';
 import type {
   ClassroomCourseDto,
   PublishTestTemplateRequest,
-  TestTemplateAssignmentDto,
+  TestSummaryDto,
   TestTemplateDto,
   TestTemplateInput,
   TestTemplateSummaryDto,
@@ -17,7 +17,7 @@ export const testTemplatesApi = {
     api.put<TestTemplateDto>(`/api/test-templates/${id}`, input).then((r) => r.data),
   remove: (id: string) => api.delete(`/api/test-templates/${id}`).then(() => undefined),
   publish: (id: string, body: PublishTestTemplateRequest) =>
-    api.post<TestTemplateAssignmentDto[]>(`/api/test-templates/${id}/publish`, body).then((r) => r.data),
+    api.post<TestSummaryDto[]>(`/api/test-templates/${id}/publish`, body).then((r) => r.data),
 };
 
 export const classroomApi = {

@@ -73,7 +73,7 @@ public class TestTemplatesController : ControllerBase
         var result = await _templates.PublishAsync(CurrentUserId, id, request, ct);
         return result switch
         {
-            PublishResult.Success s => Ok(s.Assignments),
+            PublishResult.Success s => Ok(s.Tests),
             PublishResult.TestTemplateNotFound => NotFound(),
             PublishResult.UnknownCourses u => BadRequest(new { error = "Unknown course id(s).", unknown = u.CourseIds }),
             PublishResult.ClassroomFailure f => StatusCode(StatusCodes.Status502BadGateway,

@@ -111,6 +111,7 @@ builder.Services.AddControllers()
 builder.Services.AddHttpClient<Api.Services.GoogleClassroomClient>();
 builder.Services.AddScoped<Api.Services.ITeacherProvider, Api.Services.TeacherProvider>();
 builder.Services.AddScoped<Api.Services.ITestTemplatesService, Api.Services.TestTemplatesService>();
+builder.Services.AddScoped<Api.Services.ITestsService, Api.Services.TestsService>();
 
 var app = builder.Build();
 

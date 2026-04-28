@@ -70,6 +70,68 @@ public class GoogleClassroomClient
         return payload?.Courses ?? new List<CourseInfo>();
     }
 
+    public async Task<CourseWorkInfo> CreateCourseWorkAsync(
+        ApplicationUser user,
+        string courseId,
+        string title,
+        string? description,
+        string linkUrl,
+        DateTimeOffset closesAt,
+        CancellationToken ct = default)
+    {
+        var url = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork";
+
+        var dueUtc = closesAt.ToUniversalTime();
+        var body = new
+        {
+            title,
+            description,
+            workType = "ASSIGNMENT",
+            state = "PUBLISHED",
+            materials = new[]
+            {
+                new { link = new { url = linkUrl } }
+            },
+            dueDate = new { year = dueUtc.Year, month = dueUtc.Month, day = dueUtc.Day },
+            dueTime = new { hours = dueUtc.Hour, minutes = dueUtc.Minute }
+        };
+
+        async Task<HttpResponseMessage> PostAsync(string token)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = JsonContent.Create(body)
+            };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _http.SendAsync(req, ct);
+        }
+
+        var token = await GetValidAccessTokenAsync(user, ct)
+            ?? throw new InvalidOperationException("No Google access token available for this user.");
+
+        var resp = await PostAsync(token);
+        if (resp.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            resp.Dispose();
+            token = await RefreshAccessTokenAsync(user, ct)
+                ?? throw new InvalidOperationException("Failed to refresh Google access token.");
+            resp = await PostAsync(token);
+        }
+
+        using (resp)
+        {
+            if (!resp.IsSuccessStatusCode)
+            {
+                var detail = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("Classroom courseWork create failed: {Status} {Body}", resp.StatusCode, detail);
+                throw new HttpRequestException($"Classroom rejected courseWork create ({(int)resp.StatusCode}): {detail}");
+            }
+            var payload = await resp.Content.ReadFromJsonAsync<CourseWorkInfo>(cancellationToken: ct)
+                ?? throw new InvalidOperationException("Empty courseWork response.");
+            return payload;
+        }
+    }
+
     private async Task<string?> GetValidAccessTokenAsync(ApplicationUser user, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(user.GoogleAccessToken)
@@ -133,6 +195,12 @@ public class GoogleClassroomClient
         [JsonPropertyName("name")] public string Name { get; set; } = "";
         [JsonPropertyName("section")] public string? Section { get; set; }
         [JsonPropertyName("description")] public string? Description { get; set; }
+    }
+
+    public class CourseWorkInfo
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("alternateLink")] public string? AlternateLink { get; set; }
     }
 
     private class CoursesResponse

@@ -52,11 +52,3 @@ public record PublishTestTemplateRequest(
     [Required, MinLength(1)] List<string> CourseIds,
     [Required] DateTimeOffset ClosesAt
 );
-
-public record TestTemplateAssignmentDto(
-    Guid Id,
-    string GoogleCourseId,
-    string GoogleCourseName,
-    DateTimeOffset ClosesAt,
-    DateTimeOffset CreatedAt
-);

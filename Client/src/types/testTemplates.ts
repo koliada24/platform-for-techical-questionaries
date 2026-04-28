@@ -62,8 +62,12 @@ export interface PublishTestTemplateRequest {
   closesAt: string; // ISO
 }
 
-export interface TestTemplateAssignmentDto {
+/** A published test snapshot (one per Google Classroom course). */
+export interface TestSummaryDto {
   id: string;
+  name: string;
+  description: string | null;
+  timeLimitMinutes: number | null;
   googleCourseId: string;
   googleCourseName: string;
   closesAt: string;

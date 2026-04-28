@@ -10,12 +10,21 @@ public class TestTemplatesService : ITestTemplatesService
     private readonly AppDbContext _db;
     private readonly GoogleClassroomClient _classroom;
     private readonly ITeacherProvider _teacherProvider;
+    private readonly IConfiguration _config;
+    private readonly ILogger<TestTemplatesService> _logger;
 
-    public TestTemplatesService(AppDbContext db, GoogleClassroomClient classroom, ITeacherProvider teacherProvider)
+    public TestTemplatesService(
+        AppDbContext db,
+        GoogleClassroomClient classroom,
+        ITeacherProvider teacherProvider,
+        IConfiguration config,
+        ILogger<TestTemplatesService> logger)
     {
         _db = db;
         _classroom = classroom;
         _teacherProvider = teacherProvider;
+        _config = config;
+        _logger = logger;
     }
 
     public Task<List<TestTemplateSummaryDto>> ListAsync(string teacherId, CancellationToken ct = default)
@@ -102,7 +111,7 @@ public class TestTemplatesService : ITestTemplatesService
     public async Task<PublishResult> PublishAsync(string teacherId, Guid id, PublishTestTemplateRequest request, CancellationToken ct = default)
     {
         var template = await _db.TestTemplates
-            .Include(t => t.Assignments)
+            .Include(t => t.Questions)
             .FirstOrDefaultAsync(t => t.Id == id && t.TeacherId == teacherId, ct);
 
         if (template is null)
@@ -135,28 +144,75 @@ public class TestTemplatesService : ITestTemplatesService
             return new PublishResult.UnknownCourses(unknown);
         }
 
-        var existing = template.Assignments.ToDictionary(a => a.GoogleCourseId, a => a);
+        var created = new List<Test>();
         foreach (var cid in request.CourseIds.Distinct())
         {
-            if (existing.TryGetValue(cid, out var current))
-            {
-                current.ClosesAt = request.ClosesAt;
-                continue;
-            }
             var info = byId[cid];
-            template.Assignments.Add(new TestTemplateAssignment
+            var test = new Test
             {
-                TestTemplateId = template.Id,
+                TeacherId = teacherId,
+                Name = template.Name,
+                Description = template.Description,
+                TimeLimitMinutes = template.TimeLimitMinutes,
                 GoogleCourseId = cid,
                 GoogleCourseName = info.Name,
-                ClosesAt = request.ClosesAt
-            });
+                ClosesAt = request.ClosesAt,
+                Questions = template.Questions
+                    .OrderBy(q => q.Order)
+                    .Select(q => new TestQuestion
+                    {
+                        Text = q.Text,
+                        Order = q.Order,
+                        Options = q.Answers
+                            .OrderBy(a => a.Order)
+                            .Select(a => new TestAnswerOption
+                            {
+                                Text = a.Text,
+                                IsCorrect = a.IsCorrect,
+                                Order = a.Order
+                            })
+                            .ToList()
+                    })
+                    .ToList()
+            };
+            _db.Tests.Add(test);
+            created.Add(test);
         }
-        template.UpdatedAt = DateTimeOffset.UtcNow;
+
         await _db.SaveChangesAsync(ct);
 
-        var dto = template.Assignments
-            .Select(a => new TestTemplateAssignmentDto(a.Id, a.GoogleCourseId, a.GoogleCourseName, a.ClosesAt, a.CreatedAt))
+        var clientBaseUrl = (_config["Client:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        foreach (var test in created)
+        {
+            var linkUrl = $"{clientBaseUrl}/tests/{test.Id}";
+            try
+            {
+                var work = await _classroom.CreateCourseWorkAsync(
+                    teacher,
+                    test.GoogleCourseId,
+                    title: test.Name,
+                    description: BuildAssignmentDescription(test.Description, linkUrl),
+                    linkUrl: linkUrl,
+                    closesAt: test.ClosesAt,
+                    ct: ct);
+                test.GoogleCourseWorkId = work.Id;
+                test.GoogleCourseWorkLink = work.AlternateLink;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create Classroom assignment for test {TestId} in course {CourseId}",
+                    test.Id, test.GoogleCourseId);
+                return new PublishResult.ClassroomFailure(
+                    $"Test saved but Google Classroom assignment could not be created: {ex.Message}");
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var dto = created
+            .Select(t => new TestSummaryDto(
+                t.Id, t.Name, t.Description, t.TimeLimitMinutes,
+                t.GoogleCourseId, t.GoogleCourseName, t.ClosesAt, t.CreatedAt))
             .ToList();
         return new PublishResult.Success(dto);
     }
@@ -164,6 +220,12 @@ public class TestTemplatesService : ITestTemplatesService
     private static string? NormalizeDescription(string? description)
     {
         return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+    }
+
+    private static string BuildAssignmentDescription(string? testDescription, string linkUrl)
+    {
+        var body = string.IsNullOrWhiteSpace(testDescription) ? "" : testDescription.Trim() + "\n\n";
+        return body + $"Take the test: {linkUrl}";
     }
 
     private static Question ToQuestion(QuestionInput qIn, Guid testTemplateId) => new()

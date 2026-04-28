@@ -14,7 +14,7 @@ public interface ITestTemplatesService
 
 public abstract record PublishResult
 {
-    public sealed record Success(IReadOnlyList<TestTemplateAssignmentDto> Assignments) : PublishResult;
+    public sealed record Success(IReadOnlyList<TestSummaryDto> Tests) : PublishResult;
     public sealed record TestTemplateNotFound : PublishResult;
     public sealed record UnknownCourses(IReadOnlyList<string> CourseIds) : PublishResult;
     public sealed record ClassroomFailure(string Message) : PublishResult;
