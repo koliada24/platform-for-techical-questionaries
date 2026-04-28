@@ -60,14 +60,33 @@ const ProfileToggle = forwardRef<HTMLDivElement, ToggleProps>(
 );
 ProfileToggle.displayName = 'ProfileToggle';
 
-export function TopNavbar() {
+export function TopNavbar({
+  collapsed = false,
+  onToggleSidebar,
+}: {
+  collapsed?: boolean;
+  onToggleSidebar?: () => void;
+}) {
   const { user, logout } = useAuth();
   if (!user) return null;
 
   const display = user.fullName ?? user.email;
 
   return (
-    <Navbar bg="white" className="border-bottom px-3 py-2">
+    <Navbar
+      bg="white"
+      className="border-bottom px-3 py-2"
+      style={{ position: 'sticky', top: 0, zIndex: 1030 }}
+    >
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        className="btn btn-outline-secondary btn-sm me-2"
+        aria-label={collapsed ? 'Show sidebar' : 'Hide sidebar'}
+        title={collapsed ? 'Show sidebar' : 'Hide sidebar'}
+      >
+        <span aria-hidden="true">{collapsed ? '\u00bb' : '\u00ab'}</span>
+      </button>
       <Navbar.Collapse className="justify-content-end">
         <Dropdown align="end">
           <Dropdown.Toggle as={ProfileToggle} id="user-menu">

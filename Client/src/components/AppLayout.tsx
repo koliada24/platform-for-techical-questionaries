@@ -1,13 +1,23 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
+import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
 
 export function AppLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
-      <Sidebar />
-      <div className="flex-grow-1 d-flex flex-column bg-light">
-        <TopNavbar />
+    <div className="bg-light" style={{ minHeight: '100vh' }}>
+      <Sidebar collapsed={collapsed} />
+      <div
+        className="d-flex flex-column"
+        style={{
+          marginLeft: collapsed ? 0 : SIDEBAR_WIDTH,
+          minHeight: '100vh',
+          transition: 'margin-left 0.2s ease',
+        }}
+      >
+        <TopNavbar collapsed={collapsed} onToggleSidebar={() => setCollapsed((c) => !c)} />
         <main className="flex-grow-1">
           <Outlet />
         </main>
