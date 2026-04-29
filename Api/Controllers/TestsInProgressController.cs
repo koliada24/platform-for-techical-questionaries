@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Api.Contracts;
 using Api.Services.InProgress;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,5 +40,50 @@ public class TestsInProgressController : ControllerBase
     {
         var dto = await _service.GetForStudentAsync(CurrentUserId, id, ct);
         return dto is null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPut("attempts/{attemptId:guid}/questions/{questionId:guid}/single-answer")]
+    public Task<IActionResult> SaveSingleAnswer(Guid attemptId, Guid questionId, [FromBody] SaveSingleAnswerInput input, CancellationToken ct)
+        => MapSaveResult(_service.SaveSingleAnswerAsync(CurrentUserId, attemptId, questionId, input, ct));
+
+    [HttpPut("attempts/{attemptId:guid}/questions/{questionId:guid}/multiple-answers")]
+    public Task<IActionResult> SaveMultipleAnswers(Guid attemptId, Guid questionId, [FromBody] SaveMultipleAnswersInput input, CancellationToken ct)
+        => MapSaveResult(_service.SaveMultipleAnswersAsync(CurrentUserId, attemptId, questionId, input, ct));
+
+    [HttpPut("attempts/{attemptId:guid}/questions/{questionId:guid}/text-answer")]
+    public Task<IActionResult> SaveTextAnswer(Guid attemptId, Guid questionId, [FromBody] SaveTextAnswerInput input, CancellationToken ct)
+        => MapSaveResult(_service.SaveTextAnswerAsync(CurrentUserId, attemptId, questionId, input, ct));
+
+    [HttpPut("attempts/{attemptId:guid}/questions/{questionId:guid}/code-answer")]
+    public Task<IActionResult> SaveCodeAnswer(Guid attemptId, Guid questionId, [FromBody] SaveCodeAnswerInput input, CancellationToken ct)
+        => MapSaveResult(_service.SaveCodeAnswerAsync(CurrentUserId, attemptId, questionId, input, ct));
+
+    [HttpPut("attempts/{attemptId:guid}/questions/{questionId:guid}/diagram-answer")]
+    public Task<IActionResult> SaveDiagramAnswer(Guid attemptId, Guid questionId, [FromBody] SaveDiagramAnswerInput input, CancellationToken ct)
+        => MapSaveResult(_service.SaveDiagramAnswerAsync(CurrentUserId, attemptId, questionId, input, ct));
+
+    [HttpDelete("attempts/{attemptId:guid}/questions/{questionId:guid}/answer")]
+    public async Task<IActionResult> ClearAnswer(Guid attemptId, Guid questionId, CancellationToken ct)
+    {
+        var result = await _service.ClearAnswerAsync(CurrentUserId, attemptId, questionId, ct);
+        return result switch
+        {
+            ClearAnswerResult.Success => NoContent(),
+            ClearAnswerResult.AttemptNotFound => NotFound(new { error = "Attempt not found." }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
+    }
+
+    private async Task<IActionResult> MapSaveResult(Task<SaveAnswerResult> task)
+    {
+        var result = await task;
+        return result switch
+        {
+            SaveAnswerResult.Success => NoContent(),
+            SaveAnswerResult.AttemptNotFound => NotFound(new { error = "Attempt not found." }),
+            SaveAnswerResult.QuestionNotFound => NotFound(new { error = "Question not found." }),
+            SaveAnswerResult.WrongQuestionType w => BadRequest(new { error = $"Wrong question type. Expected {w.Expected}, got {w.Actual}." }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 }

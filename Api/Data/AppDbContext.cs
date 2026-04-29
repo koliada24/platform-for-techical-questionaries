@@ -123,7 +123,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasDiscriminator<string>("AnswerType")
                 .HasValue<SingleAnswerInProgress>("Single")
                 .HasValue<MultipleAnswersInProgress>("Multiple")
-                .HasValue<TextAnswerInProgress>("Text");
+                .HasValue<TextAnswerInProgress>("Text")
+                .HasValue<CodeAnswerInProgress>("Code")
+                .HasValue<DiagramAnswerInProgress>("Diagram");
             e.HasOne(x => x.AttemptInProgress)
                 .WithMany(a => a.Answers)
                 .HasForeignKey(x => x.AttemptInProgressId)
@@ -144,6 +146,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                     : v.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList());
 
         builder.Entity<TextAnswerInProgress>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
+
+        builder.Entity<CodeAnswerInProgress>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
+
+        builder.Entity<DiagramAnswerInProgress>()
             .Property(x => x.Text)
             .HasMaxLength(10000);
     }

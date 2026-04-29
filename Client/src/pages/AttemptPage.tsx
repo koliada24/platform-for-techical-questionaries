@@ -41,10 +41,13 @@ export function AttemptPage() {
   const [fetching, setFetching] = useState(false);
 
   const [currentIdx, setCurrentIdx] = useState(0);
-  // local-only answers (no server saving yet, per current scope)
   const [singlePicks, setSinglePicks] = useState<Record<string, number | null>>({});
   const [multiPicks, setMultiPicks] = useState<Record<string, number[]>>({});
   const [textPicks, setTextPicks] = useState<Record<string, string>>({});
+  const [answeredIds, setAnsweredIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   const [showFinish, setShowFinish] = useState(false);
 
@@ -63,6 +66,35 @@ export function AttemptPage() {
       .then((data) => {
         if (cancelled) return;
         setAttempt(data);
+
+        // Hydrate previously-saved answers from the server.
+        const single: Record<string, number | null> = {};
+        const multi: Record<string, number[]> = {};
+        const text: Record<string, string> = {};
+        const answered = new Set<string>();
+        for (const q of data.questions) {
+          const s = q.savedAnswer;
+          if (!s) continue;
+          answered.add(q.id);
+          switch (s.type) {
+            case 'SingleAnswer':
+              single[q.id] = s.selectedOptionOrder ?? null;
+              break;
+            case 'MultipleAnswers':
+              multi[q.id] = s.selectedOptionOrders ?? [];
+              break;
+            case 'OpenAnswer':
+            case 'Code':
+            case 'Diagram':
+              text[q.id] = s.text ?? '';
+              break;
+          }
+        }
+        setSinglePicks(single);
+        setMultiPicks(multi);
+        setTextPicks(text);
+        setAnsweredIds(answered);
+
         const stored = window.localStorage.getItem(idxStorageKey(data.id));
         const parsed = stored == null ? NaN : Number(stored);
         if (Number.isFinite(parsed) && parsed >= 0 && parsed < data.questions.length) {
@@ -110,6 +142,91 @@ export function AttemptPage() {
   }, [attempt]);
 
   const timeLeftMs = deadlineMs == null ? null : deadlineMs - now;
+
+  const handleAnswer = async () => {
+    if (!attempt) return;
+    const q = attempt.questions[currentIdx];
+    if (!q) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      switch (q.type) {
+        case 'SingleAnswer':
+          await attemptsApi.saveSingleAnswer(attempt.id, q.id, singlePicks[q.id] ?? null);
+          break;
+        case 'MultipleAnswers':
+          await attemptsApi.saveMultipleAnswers(attempt.id, q.id, multiPicks[q.id] ?? []);
+          break;
+        case 'OpenAnswer':
+          await attemptsApi.saveTextAnswer(attempt.id, q.id, textPicks[q.id] ?? '');
+          break;
+        case 'Code':
+          await attemptsApi.saveCodeAnswer(attempt.id, q.id, textPicks[q.id] ?? '');
+          break;
+        case 'Diagram':
+          await attemptsApi.saveDiagramAnswer(attempt.id, q.id, textPicks[q.id] ?? '');
+          break;
+      }
+      setAnsweredIds((prev) => {
+        if (prev.has(q.id)) return prev;
+        const next = new Set(prev);
+        next.add(q.id);
+        return next;
+      });
+      setCurrentIdx((i) => (i + 1) % attempt.questions.length);
+    } catch (e) {
+      let msg = 'Failed to save answer.';
+      if (axios.isAxiosError(e)) {
+        msg = (e.response?.data as { error?: string } | undefined)?.error ?? msg;
+      }
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!attempt) return;
+    const q = attempt.questions[currentIdx];
+    if (!q) return;
+    setClearing(true);
+    setSaveError(null);
+    try {
+      await attemptsApi.clearAnswer(attempt.id, q.id);
+      setSinglePicks((prev) => {
+        if (!(q.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[q.id];
+        return next;
+      });
+      setMultiPicks((prev) => {
+        if (!(q.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[q.id];
+        return next;
+      });
+      setTextPicks((prev) => {
+        if (!(q.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[q.id];
+        return next;
+      });
+      setAnsweredIds((prev) => {
+        if (!prev.has(q.id)) return prev;
+        const next = new Set(prev);
+        next.delete(q.id);
+        return next;
+      });
+    } catch (e) {
+      let msg = 'Failed to clear answer.';
+      if (axios.isAxiosError(e)) {
+        msg = (e.response?.data as { error?: string } | undefined)?.error ?? msg;
+      }
+      setSaveError(msg);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   // Early-return states ---------------------------------------------
   if (!id) {
@@ -193,7 +310,7 @@ export function AttemptPage() {
       {/* Question navigator */}
       <div className="d-flex flex-wrap gap-2 mb-4">
         {attempt.questions.map((q, i) => {
-          const answered = false;
+          const answered = answeredIds.has(q.id);
           const variant = i === currentIdx
             ? 'primary'
             : answered
@@ -239,9 +356,26 @@ export function AttemptPage() {
               setTextPicks={setTextPicks}
             />
 
-            <div className="d-flex justify-content-end mt-4">
-              <Button variant="primary">
-                Answer
+            {saveError && (
+              <Alert variant="danger" className="mt-3 mb-0">
+                {saveError}
+              </Alert>
+            )}
+
+            <div className="d-flex justify-content-end gap-2 mt-4">
+              <Button
+                variant="outline-secondary"
+                onClick={handleClear}
+                disabled={saving || clearing || !answeredIds.has(question.id)}
+              >
+                {clearing ? 'Clearing…' : 'Clear answer'}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleAnswer}
+                disabled={saving || clearing || question.type === 'Code' || question.type === 'Diagram'}
+              >
+                {saving ? 'Saving…' : 'Answer'}
               </Button>
             </div>
           </Card.Body>

@@ -36,3 +36,13 @@ public class TextAnswerInProgress : AnswerInProgress
 {
     public string? Text { get; set; }
 }
+
+public class CodeAnswerInProgress : AnswerInProgress
+{
+    public string? Text { get; set; }
+}
+
+public class DiagramAnswerInProgress : AnswerInProgress
+{
+    public string? Text { get; set; }
+}
