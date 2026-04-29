@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TestTemplatesManagementPage } from './pages/TestTemplatesManagementPage';
 import { TestTemplateEditorPage } from './pages/TestTemplateEditorPage';
+import { StudentTestPage } from './pages/StudentTestPage';
 import { AppLayout } from './components/AppLayout';
 
 function Shell() {
@@ -26,17 +27,22 @@ function Shell() {
     );
   }
 
-  if (!user) return <LoginPage />;
-
+  // Public student test route — accessible without an authenticated session;
+  // the page itself triggers the student Google login flow when needed.
   return (
     <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/test-templates" element={<TestTemplatesManagementPage />} />
-        <Route path="/test-templates/new" element={<TestTemplateEditorPage />} />
-        <Route path="/test-templates/:id/edit" element={<TestTemplateEditorPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
+      <Route path="/tests/:id" element={<StudentTestPage />} />
+      {user ? (
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/test-templates" element={<TestTemplatesManagementPage />} />
+          <Route path="/test-templates/new" element={<TestTemplateEditorPage />} />
+          <Route path="/test-templates/:id/edit" element={<TestTemplateEditorPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      ) : (
+        <Route path="*" element={<LoginPage />} />
+      )}
     </Routes>
   );
 }

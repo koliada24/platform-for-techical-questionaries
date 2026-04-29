@@ -14,7 +14,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
-  loginWithGoogle: (role: UserRole) => void;
+  loginWithGoogle: (role: UserRole, returnUrl?: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -45,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const loginWithGoogle = useCallback((role: UserRole) => {
+  const loginWithGoogle = useCallback((role: UserRole, returnUrl?: string) => {
     const path = role === 'Teacher' ? 'google-login-teacher' : 'google-login-student';
-    window.location.href = `${API_BASE_URL}/api/auth/${path}`;
+    const qs = returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : '';
+    window.location.href = `${API_BASE_URL}/api/auth/${path}${qs}`;
   }, []);
 
   const value = useMemo<AuthContextValue>(
