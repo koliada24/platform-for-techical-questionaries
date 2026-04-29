@@ -157,11 +157,70 @@ public class TestTemplatesService : ITestTemplatesService
             return new PublishResult.UnknownCourses(unknown);
         }
 
-        // implement
+        var clientBaseUrl = _config["Client:BaseUrl"].TrimEnd('/');
 
-        throw new NotImplementedException();
+        var publishedTests = request.CourseIds.Select(courseId =>
+        {
+            var course = byId[courseId];
+            return new PublishedTest
+            {
+                TestTemplateId = template.Id,
+                TeacherId = teacherId,
+                Name = template.Name,
+                Description = template.Description,
+                TimeLimitMinutes = template.TimeLimitMinutes,
+                GoogleCourseId = course.Id,
+                GoogleCourseName = course.Name,
+                ClosesAt = request.ClosesAt,
+                Questions = template.Questions
+                    .OrderBy(q => q.Order)
+                    .Select(q => new PublishedQuestion
+                    {
+                        Text = q.Text,
+                        Order = q.Order,
+                        Type = q.Type,
+                        Answers = q.Answers
+                            .OrderBy(a => a.Order)
+                            .Select(a => new Answer { Text = a.Text, IsCorrect = a.IsCorrect, Order = a.Order })
+                            .ToList()
+                    })
+                    .ToList()
+            };
+        }).ToList();
 
-        //return new PublishResult.Success(dto);
+        _db.PublishedTests.AddRange(publishedTests);
+        await _db.SaveChangesAsync(ct);
+
+        foreach (var pt in publishedTests)
+        {
+            var link = $"{clientBaseUrl}/tests/{pt.Id}";
+            try
+            {
+                var info = await _classroom.CreateCourseWorkAsync(
+                    teacher,
+                    pt.GoogleCourseId,
+                    pt.Name,
+                    pt.Description,
+                    link,
+                    pt.ClosesAt,
+                    ct);
+                pt.GoogleCourseWorkId = info.Id;
+                pt.GoogleCourseWorkLink = info.AlternateLink;
+            }
+            catch (Exception ex)
+            {
+                return new PublishResult.ClassroomFailure(ex.Message);
+            }
+        }
+        await _db.SaveChangesAsync(ct);
+
+        var summaries = publishedTests
+            .Select(pt => new TestSummaryDto(
+                pt.Id, pt.Name, pt.Description, pt.TimeLimitMinutes,
+                pt.GoogleCourseId, pt.GoogleCourseName, pt.ClosesAt, pt.CreatedAt))
+            .ToList();
+
+        return new PublishResult.Success(summaries);
     }
 
     private static string? NormalizeDescription(string? description)
