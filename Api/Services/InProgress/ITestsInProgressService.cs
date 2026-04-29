@@ -4,19 +4,15 @@ namespace Api.Services.InProgress;
 
 public interface ITestsInProgressService
 {
-    
+    Task<StartAttemptResult> StartAttemptAsync(
+        string studentId,
+        Guid publishedTestId,
+        CancellationToken ct = default);
 }
 
-public abstract record StartTestResult
+public abstract record StartAttemptResult
 {
-    public sealed record Success(TestInProcessDto InProcess, bool AlreadyExisted) : StartTestResult;
-    public sealed record TestNotFound : StartTestResult;
-    public sealed record TestClosed : StartTestResult;
-    public sealed record AlreadySubmitted : StartTestResult;
-}
-
-public abstract record SubmitTestResult
-{
-    public sealed record Success(TestAnswersDto Answers) : SubmitTestResult;
-    public sealed record InProcessNotFound : SubmitTestResult;
+    public sealed record Success(AttemptInProgressDto Attempt, bool AlreadyExisted) : StartAttemptResult;
+    public sealed record PublishedTestNotFound : StartAttemptResult;
+    public sealed record TestClosed : StartAttemptResult;
 }

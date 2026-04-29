@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
 import { publishedTestsApi, type PublishedTestInfoDto } from '../api/publishedTests';
+import { attemptsApi, type AttemptInProgressDto } from '../api/attempts';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -19,6 +20,9 @@ export function StudentTestPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadStatus, setLoadStatus] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState<AttemptInProgressDto | null>(null);
 
   const returnUrl = id ? `/tests/${id}` : '/';
   const isStudent = user?.role === 'Student';
@@ -124,6 +128,24 @@ export function StudentTestPage() {
 
   const closed = new Date(info.closesAt).getTime() < Date.now();
 
+  const handleStart = async () => {
+    if (!id) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const a = await attemptsApi.start(id);
+      setAttempt(a);
+    } catch (e) {
+      let msg = 'Failed to start the attempt.';
+      if (axios.isAxiosError(e)) {
+        msg = (e.response?.data as { error?: string } | undefined)?.error ?? msg;
+      }
+      setStartError(msg);
+    } finally {
+      setStarting(false);
+    }
+  };
+
   return (
     <Container className="py-5" style={{ maxWidth: 640 }}>
       <div className="d-flex justify-content-end align-items-center gap-2 mb-3 small text-muted">
@@ -158,9 +180,21 @@ export function StudentTestPage() {
             </Alert>
           )}
 
-          <Button variant="primary" disabled={closed}>
-            Start
-          </Button>
+          {startError && (
+            <Alert variant="danger" className="mb-3">
+              {startError}
+            </Alert>
+          )}
+
+          {attempt ? (
+            <Alert variant="success" className="mb-0">
+              Attempt started at {formatDateTime(attempt.startedAt)}.
+            </Alert>
+          ) : (
+            <Button variant="primary" disabled={closed || starting} onClick={handleStart}>
+              {starting ? 'Starting…' : 'Start'}
+            </Button>
+          )}
         </Card.Body>
       </Card>
     </Container>

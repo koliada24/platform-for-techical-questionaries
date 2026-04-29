@@ -15,6 +15,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<QuestionTemplate> QuestionTemplates => Set<QuestionTemplate>();
     public DbSet<PublishedTest> PublishedTests => Set<PublishedTest>();
     public DbSet<PublishedQuestion> PublishedQuestions => Set<PublishedQuestion>();
+    public DbSet<AttemptInProgress> AttemptsInProgress => Set<AttemptInProgress>();
+    public DbSet<AnswerInProgress> AnswersInProgress => Set<AnswerInProgress>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -100,5 +102,49 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 a.Property(p => p.Text).IsRequired().HasMaxLength(1000);
             });
         });
+
+        builder.Entity<AttemptInProgress>(e =>
+        {
+            e.ToTable("INPROCESS_TestAttempts");
+            e.HasOne(x => x.PublishedTest)
+                .WithMany()
+                .HasForeignKey(x => x.PublishedTestId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.StudentId, x.PublishedTestId }).IsUnique();
+        });
+
+        builder.Entity<AnswerInProgress>(e =>
+        {
+            e.ToTable("INPROCESS_Answers");
+            e.HasDiscriminator<string>("AnswerType")
+                .HasValue<SingleAnswerInProgress>("Single")
+                .HasValue<MultipleAnswersInProgress>("Multiple")
+                .HasValue<TextAnswerInProgress>("Text");
+            e.HasOne(x => x.AttemptInProgress)
+                .WithMany(a => a.Answers)
+                .HasForeignKey(x => x.AttemptInProgressId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.PublishedQuestion)
+                .WithMany()
+                .HasForeignKey(x => x.PublishedQuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.AttemptInProgressId, x.PublishedQuestionId }).IsUnique();
+        });
+
+        builder.Entity<MultipleAnswersInProgress>()
+            .Property(x => x.SelectedOptionOrders)
+            .HasConversion(
+                v => string.Join(',', v),
+                v => string.IsNullOrEmpty(v)
+                    ? new List<int>()
+                    : v.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList());
+
+        builder.Entity<TextAnswerInProgress>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
     }
 }
