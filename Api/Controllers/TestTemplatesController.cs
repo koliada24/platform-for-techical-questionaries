@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Api.Contracts;
 using Api.Models;
-using Api.Services;
+using Api.Services.Templates;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

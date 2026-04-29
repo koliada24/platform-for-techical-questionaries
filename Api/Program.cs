@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Api.Data;
 using Api.Models;
+using Api.Services.InProgress;
+using Api.Services.Templates;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth.Claims;
@@ -110,8 +112,8 @@ builder.Services.AddControllers()
 
 builder.Services.AddHttpClient<Api.Services.GoogleClassroomClient>();
 builder.Services.AddScoped<Api.Services.ITeacherProvider, Api.Services.TeacherProvider>();
-builder.Services.AddScoped<Api.Services.ITestTemplatesService, Api.Services.TestTemplatesService>();
-builder.Services.AddScoped<Api.Services.ITestsService, Api.Services.TestsService>();
+builder.Services.AddScoped<ITestTemplatesService, TestTemplatesService>();
+builder.Services.AddScoped<ITestsInProgressService, TestsInProgressService>();
 
 var app = builder.Build();
 

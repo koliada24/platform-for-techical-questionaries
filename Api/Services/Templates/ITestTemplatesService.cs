@@ -1,6 +1,6 @@
 using Api.Contracts;
 
-namespace Api.Services;
+namespace Api.Services.Templates;
 
 public interface ITestTemplatesService
 {

@@ -19,10 +19,10 @@ public class TestTemplate
     public int? TimeLimitMinutes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public List<Question> Questions { get; set; } = new();
+    public List<QuestionTemplate> Questions { get; set; } = new();
 }
 
-public class Question
+public class QuestionTemplate
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TestTemplateId { get; set; }

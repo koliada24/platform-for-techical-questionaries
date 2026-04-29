@@ -5,7 +5,7 @@ namespace Api.Contracts;
 
 public record AnswerDto(string Text, bool IsCorrect, int Order);
 
-public record QuestionDto(Guid Id, string Text, int Order, QuestionType Type, List<AnswerDto> Answers);
+public record QuestionTemplateDto(Guid Id, string Text, int Order, QuestionType Type, List<AnswerDto> Answers);
 
 public record TestTemplateDto(
     Guid Id,
@@ -14,7 +14,7 @@ public record TestTemplateDto(
     int? TimeLimitMinutes,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    List<QuestionDto> Questions
+    List<QuestionTemplateDto> Questions
 );
 
 public record TestTemplateSummaryDto(
@@ -47,7 +47,7 @@ public class AnswerInput
     }
 }
 
-public record QuestionInput(
+public record QuestionTemplateInput(
     Guid? Id,
     [Required, MinLength(1)] string Text,
     int Order,
@@ -59,7 +59,7 @@ public record TestTemplateInput(
     [Required, MinLength(1), MaxLength(200)] string Name,
     [MaxLength(2000)] string? Description,
     [Range(1, 600)] int? TimeLimitMinutes,
-    [MinLength(1)] List<QuestionInput> Questions
+    [MinLength(1)] List<QuestionTemplateInput> Questions
 );
 
 // Google Classroom
