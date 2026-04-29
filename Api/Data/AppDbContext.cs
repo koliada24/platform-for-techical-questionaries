@@ -22,8 +22,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             v => v.UtcTicks,
             v => new DateTimeOffset(v, TimeSpan.Zero));
         var dtoNullableConverter = new ValueConverter<DateTimeOffset?, long?>(
-            v => v.HasValue ? v.Value.UtcTicks : (long?)null,
-            v => v.HasValue ? new DateTimeOffset(v.Value, TimeSpan.Zero) : (DateTimeOffset?)null);
+            v => v.HasValue ? v.Value.UtcTicks : null,
+            v => v.HasValue ? new DateTimeOffset(v.Value, TimeSpan.Zero) : null);
 
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
@@ -38,7 +38,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<TestTemplate>(e =>
         {
-            e.ToTable("Template_Tests");
+            e.ToTable("TEMPLATE_Tests");
             e.Property(x => x.Name).IsRequired().HasMaxLength(200);
             e.Property(x => x.Description).HasMaxLength(2000);
             e.HasOne(x => x.Teacher)
@@ -50,7 +50,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<QuestionTemplate>(e =>
         {
-            e.ToTable("Template_Questions");
+            e.ToTable("TEMPLATE_Questions");
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
             e.HasOne(x => x.TestTemplate)
