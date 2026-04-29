@@ -33,4 +33,11 @@ public class TestsInProgressController : ControllerBase
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
+
+    [HttpGet("attempts/{id:guid}")]
+    public async Task<IActionResult> GetAttempt(Guid id, CancellationToken ct)
+    {
+        var dto = await _service.GetForStudentAsync(CurrentUserId, id, ct);
+        return dto is null ? NotFound() : Ok(dto);
+    }
 }

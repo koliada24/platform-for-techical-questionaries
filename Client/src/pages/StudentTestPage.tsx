@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Container, Spinner, Stack } from 'react-bootstrap';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
 import { publishedTestsApi, type PublishedTestInfoDto } from '../api/publishedTests';
-import { attemptsApi, type AttemptInProgressDto } from '../api/attempts';
+import { attemptsApi } from '../api/attempts';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -14,6 +14,7 @@ function formatDateTime(iso: string): string {
 
 export function StudentTestPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, loading: authLoading, loginWithGoogle, logout } = useAuth();
 
   const [info, setInfo] = useState<PublishedTestInfoDto | null>(null);
@@ -22,7 +23,6 @@ export function StudentTestPage() {
   const [fetching, setFetching] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState<AttemptInProgressDto | null>(null);
 
   const returnUrl = id ? `/tests/${id}` : '/';
   const isStudent = user?.role === 'Student';
@@ -134,7 +134,7 @@ export function StudentTestPage() {
     setStartError(null);
     try {
       const a = await attemptsApi.start(id);
-      setAttempt(a);
+      navigate(`/attempts/${a.id}`);
     } catch (e) {
       let msg = 'Failed to start the attempt.';
       if (axios.isAxiosError(e)) {
@@ -186,15 +186,9 @@ export function StudentTestPage() {
             </Alert>
           )}
 
-          {attempt ? (
-            <Alert variant="success" className="mb-0">
-              Attempt started at {formatDateTime(attempt.startedAt)}.
-            </Alert>
-          ) : (
-            <Button variant="primary" disabled={closed || starting} onClick={handleStart}>
-              {starting ? 'Starting…' : 'Start'}
-            </Button>
-          )}
+          <Button variant="primary" disabled={closed || starting} onClick={handleStart}>
+            {starting ? 'Starting…' : 'Start'}
+          </Button>
         </Card.Body>
       </Card>
     </Container>

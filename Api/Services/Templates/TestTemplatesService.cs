@@ -103,7 +103,7 @@ public class TestTemplatesService : ITestTemplatesService
         questionToUpdate.Text = questionInput.Text;
         questionToUpdate.Order = questionInput.Order;
         questionToUpdate.Type = questionInput.Type;
-        questionToUpdate.Answers = questionInput.Answers.Select(a => a.ToAnswer()).ToList();
+        questionToUpdate.Answers = MapAnswers(questionInput.Answers);
     }
 
     public async Task<bool> DeleteAsync(string teacherId, Guid id, CancellationToken ct = default)

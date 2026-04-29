@@ -8,6 +8,11 @@ public interface ITestsInProgressService
         string studentId,
         Guid publishedTestId,
         CancellationToken ct = default);
+
+    Task<AttemptForStudentDto?> GetForStudentAsync(
+        string studentId,
+        Guid attemptId,
+        CancellationToken ct = default);
 }
 
 public abstract record StartAttemptResult

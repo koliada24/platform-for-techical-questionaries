@@ -52,4 +52,42 @@ public class TestsInProgressService : ITestsInProgressService
 
     private static AttemptInProgressDto ToDto(AttemptInProgress a) =>
         new(a.Id, a.PublishedTestId, a.StartedAt);
+
+    public async Task<AttemptForStudentDto?> GetForStudentAsync(
+        string studentId,
+        Guid attemptId,
+        CancellationToken ct = default)
+    {
+        var attempt = await _db.AttemptsInProgress
+            .Include(a => a.PublishedTest)
+                .ThenInclude(t => t!.Questions)
+            .FirstOrDefaultAsync(a => a.Id == attemptId && a.StudentId == studentId, ct);
+
+        if (attempt is null || attempt.PublishedTest is null) return null;
+
+        var t = attempt.PublishedTest;
+
+        var questions = t.Questions
+            .OrderBy(q => q.Order)
+            .Select(q => new AttemptQuestionForStudentDto(
+                q.Id,
+                q.Text,
+                q.Order,
+                q.Type,
+                q.Answers
+                    .OrderBy(a => a.Order)
+                    .Select(a => new AnswerOptionForStudentDto(a.Order, a.Text))
+                    .ToList()))
+            .ToList();
+
+        return new AttemptForStudentDto(
+            attempt.Id,
+            t.Id,
+            t.Name,
+            t.Description,
+            t.TimeLimitMinutes,
+            attempt.StartedAt,
+            t.ClosesAt,
+            questions);
+    }
 }
