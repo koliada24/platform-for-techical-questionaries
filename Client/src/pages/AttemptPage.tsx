@@ -12,6 +12,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
+import { ThemeToggle } from '../components/ThemeToggle';
 import {
   attemptsApi,
   type AttemptForStudentDto,
@@ -302,11 +303,14 @@ export function AttemptPage() {
       {/* Header: name + timer */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="m-0">{attempt.name}</h4>
-        {timeLeftMs != null && (
-          <div className={`fs-5 fw-bold ${timeLeftMs <= 60_000 ? 'text-danger' : ''}`}>
-            {formatTimeLeft(timeLeftMs)}
-          </div>
-        )}
+        <div className="d-flex align-items-center gap-3">
+          {timeLeftMs != null && (
+            <div className={`fs-5 fw-bold ${timeLeftMs <= 60_000 ? 'text-danger' : ''}`}>
+              {formatTimeLeft(timeLeftMs)}
+            </div>
+          )}
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Question navigator */}

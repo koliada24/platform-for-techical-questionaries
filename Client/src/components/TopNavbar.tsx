@@ -1,6 +1,7 @@
 import { forwardRef, type MouseEvent, type ReactNode } from 'react';
 import { Dropdown, Image, Navbar } from 'react-bootstrap';
 import { useAuth } from '../auth/AuthContext';
+import { ThemeToggle } from './ThemeToggle';
 
 function Avatar({ src, name }: { src: string | null; name: string }) {
   const initials = name
@@ -74,8 +75,7 @@ export function TopNavbar({
 
   return (
     <Navbar
-      bg="white"
-      className="border-bottom px-3 py-2"
+      className="bg-body border-bottom px-3 py-2"
       style={{ position: 'sticky', top: 0, zIndex: 1030 }}
     >
       <button
@@ -88,6 +88,7 @@ export function TopNavbar({
         <span aria-hidden="true">{collapsed ? '\u00bb' : '\u00ab'}</span>
       </button>
       <Navbar.Collapse className="justify-content-end">
+        <ThemeToggle className="me-3" />
         <Dropdown align="end">
           <Dropdown.Toggle as={ProfileToggle} id="user-menu">
             <span className="d-none d-sm-inline text-body">{user.email}</span>

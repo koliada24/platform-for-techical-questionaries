@@ -418,7 +418,7 @@ function AnswerView({ question }: { question: AttemptQuestionForTeacherDto }) {
       }
       return (
         <pre
-          className="mb-0 p-2 bg-light border rounded"
+          className="mb-0 p-2 bg-body-tertiary border rounded"
           style={{ whiteSpace: 'pre-wrap', fontFamily: question.type === 'Code' ? 'monospace' : 'inherit' }}
         >
           {text}

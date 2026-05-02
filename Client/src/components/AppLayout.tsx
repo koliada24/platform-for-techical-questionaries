@@ -7,7 +7,7 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="bg-light" style={{ minHeight: '100vh' }}>
+    <div className="bg-body-tertiary" style={{ minHeight: '100vh' }}>
       <Sidebar collapsed={collapsed} />
       <div
         className="d-flex flex-column"

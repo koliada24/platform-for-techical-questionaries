@@ -13,6 +13,7 @@ import { StudentTestPage } from './pages/StudentTestPage';
 import { AttemptPage } from './pages/AttemptPage';
 import { AttemptSubmittedPage } from './pages/AttemptSubmittedPage';
 import { AppLayout } from './components/AppLayout';
+import { ThemeProvider } from './theme/ThemeContext';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -59,11 +60,13 @@ function Shell() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
