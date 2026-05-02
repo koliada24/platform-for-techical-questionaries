@@ -68,6 +68,9 @@ export function TestTemplatesManagementPage() {
                     <Badge bg="secondary" className="me-2">
                       {t.questionCount} question{t.questionCount === 1 ? '' : 's'}
                     </Badge>
+                    <Badge bg="primary" className="me-2">
+                      Max mark: {t.maxMark}
+                    </Badge>
                     {t.timeLimitMinutes ? (
                       <Badge bg="info">{t.timeLimitMinutes} min</Badge>
                     ) : (

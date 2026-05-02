@@ -5,7 +5,7 @@ namespace Api.Contracts;
 
 public record AnswerDto(string Text, bool IsCorrect, int Order);
 
-public record QuestionTemplateDto(Guid Id, string Text, int Order, QuestionType Type, List<AnswerDto> Answers);
+public record QuestionTemplateDto(Guid Id, string Text, int Order, int Mark, QuestionType Type, List<AnswerDto> Answers);
 
 public record TestTemplateDto(
     Guid Id,
@@ -23,6 +23,7 @@ public record TestTemplateSummaryDto(
     string? Description,
     int? TimeLimitMinutes,
     int QuestionCount,
+    int MaxMark,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt
 );
@@ -51,6 +52,7 @@ public record QuestionTemplateInput(
     Guid? Id,
     [Required, MinLength(1)] string Text,
     int Order,
+    [Range(1, 1000)] int Mark,
     QuestionType Type,
     List<AnswerInput> Answers
 );

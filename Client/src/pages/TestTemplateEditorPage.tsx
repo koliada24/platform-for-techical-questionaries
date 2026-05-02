@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Stack } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Container, Form, InputGroup, Row, Spinner, Stack } from 'react-bootstrap';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import type { Control, FieldErrors, UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -16,6 +16,7 @@ type FormValues = {
   questions: {
     questionId?: string;
     text: string;
+    mark: number | '';
     type: QuestionType;
     answers: { text: string; isCorrect: boolean }[];
   }[];
@@ -34,6 +35,7 @@ const hasOptions = (t: QuestionType) => t === 'SingleAnswer' || t === 'MultipleA
 const blankAnswer = () => ({ text: '', isCorrect: false });
 const blankQuestion = () => ({
   text: '',
+  mark: 1 as number | '',
   type: 'SingleAnswer' as QuestionType,
   answers: [blankAnswer(), blankAnswer()],
 });
@@ -56,6 +58,7 @@ function dtoToForm(template: TestTemplateDto | null): FormValues {
     questions: template.questions.map((q) => ({
       questionId: q.id,
       text: q.text,
+      mark: q.mark,
       type: q.type,
       answers: hasOptions(q.type)
         ? q.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect }))
@@ -76,6 +79,7 @@ function formToInput(values: FormValues): TestTemplateInput {
       id: q.questionId,
       text: q.text.trim(),
       order: i,
+      mark: typeof q.mark === 'number' ? q.mark : 1,
       type: q.type,
       answers: hasOptions(q.type)
         ? q.answers.map((a) => ({ text: a.text.trim(), isCorrect: a.isCorrect }))
@@ -258,14 +262,38 @@ export function TestTemplateEditorPage() {
                   </Button>
                 </div>
                 <Row className="g-2 mb-3">
-                  <Col xs={12} md={8}>
+                  <Col xs={12} md={6}>
                     <Form.Control
                       placeholder="Question text"
                       isInvalid={!!errors.questions?.[qi]?.text}
                       {...register(`questions.${qi}.text`, { required: 'Required' })}
                     />
+                    <Form.Control.Feedback type="invalid">
+                      {errors.questions?.[qi]?.text?.message}
+                    </Form.Control.Feedback>
                   </Col>
-                  <Col xs={12} md={4}>
+                  <Col xs={6} md={2}>
+                    <InputGroup hasValidation>
+                      <InputGroup.Text>Mark</InputGroup.Text>
+                      <Form.Control
+                        type="number"
+                        min={1}
+                        max={1000}
+                        isInvalid={!!errors.questions?.[qi]?.mark}
+                        {...register(`questions.${qi}.mark`, {
+                          valueAsNumber: true,
+                          required: 'Required',
+                          validate: (v) =>
+                            (typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 1000) ||
+                            'Enter 1–1000',
+                        })}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.questions?.[qi]?.mark?.message}
+                      </Form.Control.Feedback>
+                    </InputGroup>
+                  </Col>
+                  <Col xs={6} md={4}>
                     <Controller
                       control={control}
                       name={`questions.${qi}.type`}

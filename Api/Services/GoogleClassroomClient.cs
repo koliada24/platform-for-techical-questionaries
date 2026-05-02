@@ -77,6 +77,7 @@ public class GoogleClassroomClient
         string? description,
         string linkUrl,
         DateTimeOffset closesAt,
+        int maxPoints,
         CancellationToken ct = default)
     {
         var url = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork";
@@ -88,6 +89,7 @@ public class GoogleClassroomClient
             description,
             workType = "ASSIGNMENT",
             state = "PUBLISHED",
+            maxPoints = (double)maxPoints,
             materials = new[]
             {
                 new { link = new { url = linkUrl } }

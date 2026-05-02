@@ -25,6 +25,7 @@ public class PublishedQuestion
     public PublishedTest? PublishedTest { get; set; }
     public string Text { get; set; } = null!;
     public int Order { get; set; }
+    public int Mark { get; set; } = 1;
     public QuestionType Type { get; set; } = QuestionType.SingleAnswer;
     public List<Answer> Answers { get; set; } = new();
 }

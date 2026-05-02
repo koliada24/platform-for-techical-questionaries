@@ -15,6 +15,7 @@ export interface QuestionDto {
   id: string;
   text: string;
   order: number;
+  mark: number;
   type: QuestionType;
   answers: AnswerDto[];
 }
@@ -35,6 +36,7 @@ export interface TestTemplateSummaryDto {
   description: string | null;
   timeLimitMinutes: number | null;
   questionCount: number;
+  maxMark: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +50,7 @@ export interface QuestionInput {
   id?: string;
   text: string;
   order: number;
+  mark: number;
   type: QuestionType;
   answers: AnswerInput[];
 }

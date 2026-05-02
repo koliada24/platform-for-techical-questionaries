@@ -32,7 +32,9 @@ public class TestTemplatesService : ITestTemplatesService
             .OrderByDescending(t => t.UpdatedAt)
             .Select(t => new TestTemplateSummaryDto(
                 t.Id, t.Name, t.Description, t.TimeLimitMinutes,
-                t.Questions.Count, t.CreatedAt, t.UpdatedAt))
+                t.Questions.Count,
+                t.Questions.Sum(q => q.Mark),
+                t.CreatedAt, t.UpdatedAt))
             .ToListAsync(ct);
     }
 
@@ -102,6 +104,7 @@ public class TestTemplatesService : ITestTemplatesService
     {
         questionToUpdate.Text = questionInput.Text;
         questionToUpdate.Order = questionInput.Order;
+        questionToUpdate.Mark = questionInput.Mark;
         questionToUpdate.Type = questionInput.Type;
         questionToUpdate.Answers = MapAnswers(questionInput.Answers);
     }
@@ -178,6 +181,7 @@ public class TestTemplatesService : ITestTemplatesService
                     {
                         Text = q.Text,
                         Order = q.Order,
+                        Mark = q.Mark,
                         Type = q.Type,
                         Answers = q.Answers
                             .OrderBy(a => a.Order)
@@ -194,6 +198,7 @@ public class TestTemplatesService : ITestTemplatesService
         foreach (var pt in publishedTests)
         {
             var link = $"{clientBaseUrl}/tests/{pt.Id}";
+            var maxPoints = pt.Questions.Sum(q => q.Mark);
             try
             {
                 var info = await _classroom.CreateCourseWorkAsync(
@@ -203,6 +208,7 @@ public class TestTemplatesService : ITestTemplatesService
                     pt.Description,
                     link,
                     pt.ClosesAt,
+                    maxPoints,
                     ct);
                 pt.GoogleCourseWorkId = info.Id;
                 pt.GoogleCourseWorkLink = info.AlternateLink;
@@ -234,6 +240,7 @@ public class TestTemplatesService : ITestTemplatesService
         TestTemplateId = testTemplateId,
         Text = qIn.Text.Trim(),
         Order = qIn.Order,
+        Mark = qIn.Mark,
         Type = qIn.Type,
         Answers = MapAnswers(qIn.Answers)
     };
@@ -257,7 +264,7 @@ public class TestTemplatesService : ITestTemplatesService
     private static TestTemplateDto MapToDto(TestTemplate t) => new(
         t.Id, t.Name, t.Description, t.TimeLimitMinutes, t.CreatedAt, t.UpdatedAt,
         t.Questions.OrderBy(q => q.Order).Select(q => new QuestionTemplateDto(
-            q.Id, q.Text, q.Order, q.Type,
+            q.Id, q.Text, q.Order, q.Mark, q.Type,
             q.Answers.OrderBy(a => a.Order)
                 .Select(a => new AnswerDto(a.Text, a.IsCorrect, a.Order))
                 .ToList()
