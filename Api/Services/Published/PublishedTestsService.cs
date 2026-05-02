@@ -81,6 +81,7 @@ public class PublishedTestsService : IPublishedTestsService
                 t.ClosesAt,
                 t.GoogleCourseId,
                 QuestionCount = t.Questions.Count,
+                MaxMark = t.Questions.Sum(q => q.Mark),
             })
             .ToListAsync(ct);
 
@@ -106,6 +107,7 @@ public class PublishedTestsService : IPublishedTestsService
                     a.StartedAt,
                     a.SubmittedAt,
                     a.DurationSeconds,
+                    a.EvaluatedMark,
                 })
             .ToListAsync(ct);
 
@@ -120,6 +122,7 @@ public class PublishedTestsService : IPublishedTestsService
                 s.StartedAt,
                 s.SubmittedAt,
                 s.DurationSeconds,
+                s.EvaluatedMark,
                 false))
             .ToList();
 
@@ -131,6 +134,7 @@ public class PublishedTestsService : IPublishedTestsService
             first.Description,
             first.TimeLimitMinutes,
             publishedTests.Max(p => p.QuestionCount),
+            publishedTests.Max(p => p.MaxMark),
             publishedTests.Select(p => p.GoogleCourseId).Distinct().Count(),
             publishedTests.Min(p => p.CreatedAt),
             closesAt,

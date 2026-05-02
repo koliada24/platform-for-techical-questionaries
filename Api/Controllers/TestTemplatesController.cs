@@ -106,6 +106,13 @@ public class TestTemplatesController : ControllerBase
 
             if (!q.Answers.Any(a => a.IsCorrect))
                 return $"Question {i + 1} must have at least one correct answer.";
+
+            if (q.Type == QuestionType.MultipleAnswers)
+            {
+                var correctCount = q.Answers.Count(a => a.IsCorrect);
+                if (correctCount > 0 && q.Mark % correctCount != 0)
+                    return $"Question {i + 1} mark ({q.Mark}) must be a multiple of the number of correct answers ({correctCount}).";
+            }
         }
 
         return null;

@@ -10,6 +10,7 @@ public class AttemptSubmitted
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset SubmittedAt { get; set; } = DateTimeOffset.UtcNow;
     public long DurationSeconds { get; set; }
+    public int EvaluatedMark { get; set; }
     public List<AnswerSubmitted> Answers { get; set; } = new();
 }
 

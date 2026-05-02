@@ -29,6 +29,7 @@ public record SubmittedAttemptSummaryDto(
     System.DateTimeOffset StartedAt,
     System.DateTimeOffset SubmittedAt,
     long DurationSeconds,
+    int EvaluatedMark,
     bool IsEvaluated
 );
 
@@ -38,6 +39,7 @@ public record PublishedTestDetailDto(
     string? Description,
     int? TimeLimitMinutes,
     int QuestionCount,
+    int MaxMark,
     int CourseCount,
     System.DateTimeOffset OpenedAt,
     System.DateTimeOffset ClosesAt,

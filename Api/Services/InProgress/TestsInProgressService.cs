@@ -1,6 +1,7 @@
 using Api.Contracts;
 using Api.Data;
 using Api.Models;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.InProgress;
@@ -8,10 +9,17 @@ namespace Api.Services.InProgress;
 public class TestsInProgressService : ITestsInProgressService
 {
     private readonly AppDbContext _db;
+    private readonly GoogleClassroomClient _classroom;
+    private readonly ILogger<TestsInProgressService> _logger;
 
-    public TestsInProgressService(AppDbContext db)
+    public TestsInProgressService(
+        AppDbContext db,
+        GoogleClassroomClient classroom,
+        ILogger<TestsInProgressService> logger)
     {
         _db = db;
+        _classroom = classroom;
+        _logger = logger;
     }
 
     public async Task<StartAttemptResult> StartAttemptAsync(
@@ -211,6 +219,8 @@ public class TestsInProgressService : ITestsInProgressService
     {
         var attempt = await _db.AttemptsInProgress
             .Include(a => a.Answers)
+            .Include(a => a.PublishedTest)
+            .Include(a => a.Student)
             .FirstOrDefaultAsync(a => a.Id == attemptId && a.StudentId == studentId, ct);
         if (attempt is null)
         {
@@ -220,6 +230,13 @@ public class TestsInProgressService : ITestsInProgressService
         var submittedAt = DateTimeOffset.UtcNow;
         var duration = (long)Math.Max(0, (submittedAt - attempt.StartedAt).TotalSeconds);
 
+        var questions = await _db.PublishedQuestions
+            .Where(q => q.PublishedTestId == attempt.PublishedTestId)
+            .ToListAsync(ct);
+        var questionsById = questions.ToDictionary(q => q.Id);
+
+        var evaluatedMark = attempt.Answers.Sum(a => EvaluateAnswer(a, questionsById));
+
         var submitted = new AttemptSubmitted
         {
             PublishedTestId = attempt.PublishedTestId,
@@ -227,8 +244,12 @@ public class TestsInProgressService : ITestsInProgressService
             StartedAt = attempt.StartedAt,
             SubmittedAt = submittedAt,
             DurationSeconds = duration,
+            EvaluatedMark = evaluatedMark,
             Answers = attempt.Answers.Select(ToSubmitted).ToList(),
         };
+
+        var publishedTest = attempt.PublishedTest;
+        var student = attempt.Student;
 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
 
@@ -239,7 +260,65 @@ public class TestsInProgressService : ITestsInProgressService
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
+        // Best-effort: mark the Classroom assignment as turned in for this student.
+        if (student is not null
+            && publishedTest is not null
+            && !string.IsNullOrEmpty(publishedTest.GoogleCourseId)
+            && !string.IsNullOrEmpty(publishedTest.GoogleCourseWorkId))
+        {
+            try
+            {
+                await _classroom.TurnInStudentSubmissionAsync(
+                    student,
+                    publishedTest.GoogleCourseId,
+                    publishedTest.GoogleCourseWorkId!,
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to turn in Classroom submission for student {StudentId} on courseWork {CourseWorkId}.",
+                    studentId, publishedTest.GoogleCourseWorkId);
+            }
+        }
+
         return new SubmitAttemptResult.Success(submitted.Id);
+    }
+
+    private static int EvaluateAnswer(AnswerInProgress answer, Dictionary<Guid, PublishedQuestion> questionsById)
+    {
+        if (!questionsById.TryGetValue(answer.PublishedQuestionId, out var question))
+        {
+            return 0;
+        }
+
+        switch (answer)
+        {
+            case SingleAnswerInProgress s:
+            {
+                if (s.SelectedOptionOrder is null) return 0;
+                var correct = question.Answers.FirstOrDefault(a => a.IsCorrect);
+                if (correct is null) return 0;
+                return correct.Order == s.SelectedOptionOrder.Value ? question.Mark : 0;
+            }
+            case MultipleAnswersInProgress m:
+            {
+                var correctOrders = question.Answers
+                    .Where(a => a.IsCorrect)
+                    .Select(a => a.Order)
+                    .ToHashSet();
+                if (correctOrders.Count == 0) return 0;
+
+                var selected = m.SelectedOptionOrders.Distinct().ToList();
+                var correctSelected = selected.Count(o => correctOrders.Contains(o));
+
+                // Validation guarantees Mark is divisible by correctOrders.Count.
+                var unit = question.Mark / correctOrders.Count;
+                return unit * correctSelected;
+            }
+            default:
+                return 0;
+        }
     }
 
     private static AnswerSubmitted ToSubmitted(AnswerInProgress a) => a switch

@@ -44,6 +44,7 @@ export function PublishedTestDetailPage() {
   const navigate = useNavigate();
 
   const [detail, setDetail] = useState<PublishedTestDetailDto | null>(null);
+  console.log('detail', detail);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
@@ -190,6 +191,7 @@ export function PublishedTestDetailPage() {
                       <th>Started</th>
                       <th>Submitted</th>
                       <th>Duration</th>
+                      <th>Mark</th>
                       <th>Evaluation</th>
                     </tr>
                   </thead>
@@ -231,6 +233,7 @@ export function PublishedTestDetailPage() {
                         <td className="small">{formatDateTime(a.startedAt)}</td>
                         <td className="small">{formatDateTime(a.submittedAt)}</td>
                         <td className="small">{formatDuration(a.durationSeconds)}</td>
+                        <td className="small">{a.evaluatedMark}/{detail.maxMark}</td>
                         <td>
                           {a.isEvaluated ? (
                             <Badge bg="success">Evaluated</Badge>

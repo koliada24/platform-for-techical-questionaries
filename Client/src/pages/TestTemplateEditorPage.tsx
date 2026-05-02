@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, InputGroup, Row, Spinner, Stack } from 'react-bootstrap';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
-import type { Control, FieldErrors, UseFormRegister, UseFormSetValue } from 'react-hook-form';
+import type { Control, FieldErrors, UseFormRegister, UseFormSetValue, UseFormTrigger } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { testTemplatesApi } from '../api/testTemplates';
@@ -104,6 +104,8 @@ export function TestTemplateEditorPage() {
     reset,
     setError,
     setValue,
+    getValues,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ defaultValues: dtoToForm(null) });
 
@@ -283,9 +285,19 @@ export function TestTemplateEditorPage() {
                         {...register(`questions.${qi}.mark`, {
                           valueAsNumber: true,
                           required: 'Required',
-                          validate: (v) =>
-                            (typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 1000) ||
-                            'Enter 1–1000',
+                          validate: (v) => {
+                            if (typeof v !== 'number' || !Number.isFinite(v) || v < 1 || v > 1000) {
+                              return 'Enter 1–1000';
+                            }
+                            const q = getValues(`questions.${qi}`);
+                            if (q?.type === 'MultipleAnswers') {
+                              const correctCount = (q.answers ?? []).filter((a) => a.isCorrect).length;
+                              if (correctCount > 0 && v % correctCount !== 0) {
+                                return `Must be a multiple of ${correctCount} (correct answers)`;
+                              }
+                            }
+                            return true;
+                          },
                         })}
                       />
                       <Form.Control.Feedback type="invalid">
@@ -326,6 +338,7 @@ export function TestTemplateEditorPage() {
                             } else {
                               setValue(`questions.${qi}.answers`, []);
                             }
+                            void trigger(`questions.${qi}.mark`);
                           }}
                         >
                           {QUESTION_TYPE_OPTIONS.map((opt) => (
@@ -342,6 +355,7 @@ export function TestTemplateEditorPage() {
                   control={control}
                   register={register}
                   setValue={setValue}
+                  trigger={trigger}
                   qi={qi}
                   errors={errors}
                 />
@@ -381,10 +395,11 @@ interface AnswersProps {
   control: Control<FormValues>;
   register: UseFormRegister<FormValues>;
   setValue: UseFormSetValue<FormValues>;
+  trigger: UseFormTrigger<FormValues>;
   errors: FieldErrors<FormValues>;
 }
 
-function AnswersField({ qi, control, register, setValue, errors }: AnswersProps) {
+function AnswersField({ qi, control, register, setValue, trigger, errors }: AnswersProps) {
   const answers = useFieldArray({ control, name: `questions.${qi}.answers` });
   const type = useWatch({ control, name: `questions.${qi}.type` });
 
@@ -421,6 +436,7 @@ function AnswersField({ qi, control, register, setValue, errors }: AnswersProps)
                     } else {
                       field.onChange(!field.value);
                     }
+                    void trigger(`questions.${qi}.mark`);
                   }}
                   title="Correct?"
                 />

@@ -29,6 +29,7 @@ export interface SubmittedAttemptSummaryDto {
   startedAt: string;
   submittedAt: string;
   durationSeconds: number;
+  evaluatedMark: number;
   isEvaluated: boolean;
 }
 
@@ -38,6 +39,7 @@ export interface PublishedTestDetailDto {
   description: string | null;
   timeLimitMinutes: number | null;
   questionCount: number;
+  maxMark: number;
   courseCount: number;
   openedAt: string;
   closesAt: string;

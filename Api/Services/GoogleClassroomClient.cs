@@ -134,6 +134,73 @@ public class GoogleClassroomClient
         }
     }
 
+    public async Task TurnInStudentSubmissionAsync(
+        ApplicationUser student,
+        string courseId,
+        string courseWorkId,
+        CancellationToken ct = default)
+    {
+        async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null)
+        {
+            var req = new HttpRequestMessage(method, url);
+            if (body is not null)
+            {
+                req.Content = JsonContent.Create(body);
+            }
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _http.SendAsync(req, ct);
+        }
+
+        async Task<T> WithRetryAsync<T>(Func<string, Task<HttpResponseMessage>> call, Func<HttpResponseMessage, Task<T>> handle)
+        {
+            var token = await GetValidAccessTokenAsync(student, ct)
+                ?? throw new InvalidOperationException("No Google access token available for this student.");
+            var resp = await call(token);
+            if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                resp.Dispose();
+                token = await RefreshAccessTokenAsync(student, ct)
+                    ?? throw new InvalidOperationException("Failed to refresh Google access token.");
+                resp = await call(token);
+            }
+            using (resp)
+            {
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var detail = await resp.Content.ReadAsStringAsync(ct);
+                    throw new HttpRequestException($"Classroom request failed ({(int)resp.StatusCode}): {detail}");
+                }
+                return await handle(resp);
+            }
+        }
+
+        var listUrl = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork/{Uri.EscapeDataString(courseWorkId)}/studentSubmissions?userId=me";
+        var submissions = await WithRetryAsync(
+            token => SendAsync(HttpMethod.Get, listUrl, token),
+            async resp =>
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<StudentSubmissionsResponse>(cancellationToken: ct);
+                return payload?.StudentSubmissions ?? new List<StudentSubmissionInfo>();
+            });
+
+        var submission = submissions.FirstOrDefault();
+        if (submission is null || string.IsNullOrEmpty(submission.Id))
+        {
+            throw new InvalidOperationException("No student submission found for this courseWork.");
+        }
+
+        if (string.Equals(submission.State, "TURNED_IN", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(submission.State, "RETURNED", StringComparison.OrdinalIgnoreCase))
+        {
+            return; // already turned in
+        }
+
+        var turnInUrl = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork/{Uri.EscapeDataString(courseWorkId)}/studentSubmissions/{Uri.EscapeDataString(submission.Id)}:turnIn";
+        await WithRetryAsync(
+            token => SendAsync(HttpMethod.Post, turnInUrl, token, new { }),
+            _ => Task.FromResult(true));
+    }
+
     private async Task<string?> GetValidAccessTokenAsync(ApplicationUser user, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(user.GoogleAccessToken)
@@ -215,5 +282,16 @@ public class GoogleClassroomClient
         [JsonPropertyName("access_token")] public string? AccessToken { get; set; }
         [JsonPropertyName("expires_in")] public int ExpiresIn { get; set; }
         [JsonPropertyName("token_type")] public string? TokenType { get; set; }
+    }
+
+    private class StudentSubmissionsResponse
+    {
+        [JsonPropertyName("studentSubmissions")] public List<StudentSubmissionInfo>? StudentSubmissions { get; set; }
+    }
+
+    private class StudentSubmissionInfo
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("state")] public string? State { get; set; }
     }
 }
