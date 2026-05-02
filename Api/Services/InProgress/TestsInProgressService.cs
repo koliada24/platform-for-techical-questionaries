@@ -235,7 +235,11 @@ public class TestsInProgressService : ITestsInProgressService
             .ToListAsync(ct);
         var questionsById = questions.ToDictionary(q => q.Id);
 
-        var evaluatedMark = attempt.Answers.Sum(a => EvaluateAnswer(a, questionsById));
+        var submittedAnswers = attempt.Answers
+            .Select(a => ToSubmitted(a, questionsById))
+            .ToList();
+
+        var evaluatedMark = submittedAnswers.Sum(a => a.Mark ?? 0);
 
         var submitted = new AttemptSubmitted
         {
@@ -245,7 +249,7 @@ public class TestsInProgressService : ITestsInProgressService
             SubmittedAt = submittedAt,
             DurationSeconds = duration,
             EvaluatedMark = evaluatedMark,
-            Answers = attempt.Answers.Select(ToSubmitted).ToList(),
+            Answers = submittedAnswers,
         };
 
         var publishedTest = attempt.PublishedTest;
@@ -321,33 +325,44 @@ public class TestsInProgressService : ITestsInProgressService
         }
     }
 
-    private static AnswerSubmitted ToSubmitted(AnswerInProgress a) => a switch
+    private static AnswerSubmitted ToSubmitted(AnswerInProgress a, Dictionary<Guid, PublishedQuestion> questionsById)
     {
-        SingleAnswerInProgress s => new SingleAnswerSubmitted
+        AnswerSubmitted submitted = a switch
         {
-            PublishedQuestionId = s.PublishedQuestionId,
-            SelectedOptionOrder = s.SelectedOptionOrder,
-        },
-        MultipleAnswersInProgress m => new MultipleAnswersSubmitted
+            SingleAnswerInProgress s => new SingleAnswerSubmitted
+            {
+                PublishedQuestionId = s.PublishedQuestionId,
+                SelectedOptionOrder = s.SelectedOptionOrder,
+            },
+            MultipleAnswersInProgress m => new MultipleAnswersSubmitted
+            {
+                PublishedQuestionId = m.PublishedQuestionId,
+                SelectedOptionOrders = m.SelectedOptionOrders.ToList(),
+            },
+            TextAnswerInProgress t => new TextAnswerSubmitted
+            {
+                PublishedQuestionId = t.PublishedQuestionId,
+                Text = t.Text,
+            },
+            CodeAnswerInProgress c => new CodeAnswerSubmitted
+            {
+                PublishedQuestionId = c.PublishedQuestionId,
+                Text = c.Text,
+            },
+            DiagramAnswerInProgress d => new DiagramAnswerSubmitted
+            {
+                PublishedQuestionId = d.PublishedQuestionId,
+                Text = d.Text,
+            },
+            _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
+        };
+
+        // Auto-evaluate Single/Multiple. Other types stay null until graded by the teacher.
+        if (a is SingleAnswerInProgress or MultipleAnswersInProgress)
         {
-            PublishedQuestionId = m.PublishedQuestionId,
-            SelectedOptionOrders = m.SelectedOptionOrders.ToList(),
-        },
-        TextAnswerInProgress t => new TextAnswerSubmitted
-        {
-            PublishedQuestionId = t.PublishedQuestionId,
-            Text = t.Text,
-        },
-        CodeAnswerInProgress c => new CodeAnswerSubmitted
-        {
-            PublishedQuestionId = c.PublishedQuestionId,
-            Text = c.Text,
-        },
-        DiagramAnswerInProgress d => new DiagramAnswerSubmitted
-        {
-            PublishedQuestionId = d.PublishedQuestionId,
-            Text = d.Text,
-        },
-        _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
-    };
+            submitted.Mark = EvaluateAnswer(a, questionsById);
+        }
+
+        return submitted;
+    }
 }

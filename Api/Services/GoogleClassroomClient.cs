@@ -201,6 +201,83 @@ public class GoogleClassroomClient
             _ => Task.FromResult(true));
     }
 
+    public async Task SendStudentSubmissionGradeAsync(
+        ApplicationUser teacher,
+        string courseId,
+        string courseWorkId,
+        string studentGoogleUserId,
+        double grade,
+        CancellationToken ct = default)
+    {
+        async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null)
+        {
+            var req = new HttpRequestMessage(method, url);
+            if (body is not null)
+            {
+                req.Content = JsonContent.Create(body);
+            }
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _http.SendAsync(req, ct);
+        }
+
+        async Task<T> WithRetryAsync<T>(Func<string, Task<HttpResponseMessage>> call, Func<HttpResponseMessage, Task<T>> handle)
+        {
+            var token = await GetValidAccessTokenAsync(teacher, ct)
+                ?? throw new InvalidOperationException("No Google access token available for this teacher.");
+            var resp = await call(token);
+            if (resp.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                resp.Dispose();
+                token = await RefreshAccessTokenAsync(teacher, ct)
+                    ?? throw new InvalidOperationException("Failed to refresh Google access token.");
+                resp = await call(token);
+            }
+            using (resp)
+            {
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var detail = await resp.Content.ReadAsStringAsync(ct);
+                    throw new HttpRequestException($"Classroom request failed ({(int)resp.StatusCode}): {detail}");
+                }
+                return await handle(resp);
+            }
+        }
+
+        var listUrl = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork/{Uri.EscapeDataString(courseWorkId)}/studentSubmissions?userId={Uri.EscapeDataString(studentGoogleUserId)}";
+        var submissions = await WithRetryAsync(
+            token => SendAsync(HttpMethod.Get, listUrl, token),
+            async resp =>
+            {
+                var payload = await resp.Content.ReadFromJsonAsync<StudentSubmissionsResponse>(cancellationToken: ct);
+                return payload?.StudentSubmissions ?? new List<StudentSubmissionInfo>();
+            });
+
+        var submission = submissions.FirstOrDefault();
+        if (submission is null || string.IsNullOrEmpty(submission.Id))
+        {
+            throw new InvalidOperationException("No student submission found for this student on this courseWork.");
+        }
+
+        var patchUrl = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork/{Uri.EscapeDataString(courseWorkId)}/studentSubmissions/{Uri.EscapeDataString(submission.Id)}?updateMask=assignedGrade,draftGrade";
+        await WithRetryAsync(
+            token => SendAsync(HttpMethod.Patch, patchUrl, token, new { assignedGrade = grade, draftGrade = grade }),
+            _ => Task.FromResult(true));
+
+        // Publish the grade to the student's gradebook.
+        var returnUrl = $"https://classroom.googleapis.com/v1/courses/{Uri.EscapeDataString(courseId)}/courseWork/{Uri.EscapeDataString(courseWorkId)}/studentSubmissions/{Uri.EscapeDataString(submission.Id)}:return";
+        try
+        {
+            await WithRetryAsync(
+                token => SendAsync(HttpMethod.Post, returnUrl, token, new { }),
+                _ => Task.FromResult(true));
+        }
+        catch (Exception ex)
+        {
+            // Returning may fail if the submission isn't in a returnable state — the grade is still set.
+            _logger.LogWarning(ex, "Classroom :return failed for submission {SubmissionId}.", submission.Id);
+        }
+    }
+
     private async Task<string?> GetValidAccessTokenAsync(ApplicationUser user, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(user.GoogleAccessToken)

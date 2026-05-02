@@ -11,6 +11,8 @@ public class AttemptSubmitted
     public DateTimeOffset SubmittedAt { get; set; } = DateTimeOffset.UtcNow;
     public long DurationSeconds { get; set; }
     public int EvaluatedMark { get; set; }
+    public bool MarkSent { get; set; }
+    public DateTimeOffset? MarkSentAt { get; set; }
     public List<AnswerSubmitted> Answers { get; set; } = new();
 }
 
@@ -21,6 +23,12 @@ public abstract class AnswerSubmitted
     public AttemptSubmitted? AttemptSubmitted { get; set; }
     public Guid PublishedQuestionId { get; set; }
     public PublishedQuestion? PublishedQuestion { get; set; }
+
+    /// <summary>
+    /// Per-answer awarded mark. Auto-evaluated on submit for Single/Multiple.
+    /// Null until the teacher grades it for manual question types (Open/Code/Diagram).
+    /// </summary>
+    public int? Mark { get; set; }
 }
 
 public class SingleAnswerSubmitted : AnswerSubmitted

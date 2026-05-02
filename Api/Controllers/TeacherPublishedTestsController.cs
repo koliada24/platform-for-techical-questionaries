@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Api.Contracts;
 using Api.Services.Published;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,5 +37,50 @@ public class TeacherPublishedTestsController : ControllerBase
     {
         var detail = await _service.GetDetailForTeacherAsync(CurrentUserId, testTemplateId, closesAt, ct);
         return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpGet("attempts/{attemptId:guid}")]
+    public async Task<IActionResult> AttemptDetail(Guid attemptId, CancellationToken ct)
+    {
+        var detail = await _service.GetAttemptDetailForTeacherAsync(CurrentUserId, attemptId, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
+
+    [HttpPut("attempts/{attemptId:guid}/marks")]
+    public async Task<IActionResult> SetMarks(
+        Guid attemptId,
+        [FromBody] SetManualMarksRequest request,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        var result = await _service.SetManualMarksAsync(CurrentUserId, attemptId, request.Marks, ct);
+        return result switch
+        {
+            SetManualMarksResult.Success s => Ok(s.Detail),
+            SetManualMarksResult.AttemptNotFound => NotFound(),
+            SetManualMarksResult.InvalidMark e => BadRequest(new { error = e.Message }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
+    }
+
+    [HttpPost("attempts/{attemptId:guid}/send-mark")]
+    public async Task<IActionResult> SendMark(Guid attemptId, CancellationToken ct)
+    {
+        var result = await _service.SendMarkToClassroomAsync(CurrentUserId, attemptId, ct);
+        return result switch
+        {
+            SendMarkResult.Success s => Ok(new { mark = s.Mark, maxMark = s.MaxMark }),
+            SendMarkResult.AttemptNotFound => NotFound(),
+            SendMarkResult.NotFullyEvaluated => BadRequest(new
+            {
+                error = "All questions must be graded before sending the mark to Classroom."
+            }),
+            SendMarkResult.ClassroomFailure f => StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                error = "Failed to send mark to Classroom.",
+                detail = f.Message,
+            }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 }

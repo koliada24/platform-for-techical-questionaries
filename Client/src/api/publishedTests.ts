@@ -57,4 +57,72 @@ export const publishedTestsApi = {
         params: { testTemplateId, closesAt },
       })
       .then((r) => r.data),
+  getAttemptDetail: (attemptId: string) =>
+    api
+      .get<AttemptDetailForTeacherDto>(`/api/teacher/published-tests/attempts/${attemptId}`)
+      .then((r) => r.data),
+  setManualMarks: (attemptId: string, marks: SetManualMarkInput[]) =>
+    api
+      .put<AttemptDetailForTeacherDto>(
+        `/api/teacher/published-tests/attempts/${attemptId}/marks`,
+        { marks },
+      )
+      .then((r) => r.data),
+  sendMark: (attemptId: string) =>
+    api
+      .post<{ mark: number; maxMark: number }>(
+        `/api/teacher/published-tests/attempts/${attemptId}/send-mark`,
+      )
+      .then((r) => r.data),
 };
+
+export type QuestionType =
+  | 'SingleAnswer'
+  | 'MultipleAnswers'
+  | 'OpenAnswer'
+  | 'Code'
+  | 'Diagram';
+
+export interface AttemptAnswerOptionDto {
+  order: number;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface AttemptQuestionForTeacherDto {
+  publishedQuestionId: string;
+  text: string;
+  order: number;
+  maxMark: number;
+  type: QuestionType;
+  options: AttemptAnswerOptionDto[];
+  selectedOptionOrder: number | null;
+  selectedOptionOrders: number[] | null;
+  answerText: string | null;
+  mark: number | null;
+  isAutoEvaluated: boolean;
+}
+
+export interface AttemptDetailForTeacherDto {
+  attemptId: string;
+  testTemplateId: string;
+  closesAt: string;
+  testName: string;
+  studentId: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  studentPictureUrl: string | null;
+  startedAt: string;
+  submittedAt: string;
+  durationSeconds: number;
+  maxMark: number;
+  totalMark: number;
+  isFullyEvaluated: boolean;
+  markSent: boolean;
+  questions: AttemptQuestionForTeacherDto[];
+}
+
+export interface SetManualMarkInput {
+  publishedQuestionId: string;
+  mark: number | null;
+}

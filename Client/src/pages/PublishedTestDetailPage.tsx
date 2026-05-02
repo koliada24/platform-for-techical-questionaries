@@ -197,7 +197,11 @@ export function PublishedTestDetailPage() {
                   </thead>
                   <tbody>
                     {filtered.map((a) => (
-                      <tr key={a.id}>
+                      <tr
+                        key={a.id}
+                        onClick={() => navigate(`/published-tests/attempts/${a.id}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td>
                           <div className="d-flex align-items-center gap-2">
                             {a.studentPictureUrl ? (
