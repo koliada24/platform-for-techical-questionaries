@@ -8,6 +8,7 @@ import { TestTemplatesManagementPage } from './pages/TestTemplatesManagementPage
 import { TestTemplateEditorPage } from './pages/TestTemplateEditorPage';
 import { StudentTestPage } from './pages/StudentTestPage';
 import { AttemptPage } from './pages/AttemptPage';
+import { AttemptSubmittedPage } from './pages/AttemptSubmittedPage';
 import { AppLayout } from './components/AppLayout';
 
 function Shell() {
@@ -34,6 +35,7 @@ function Shell() {
     <Routes>
       <Route path="/tests/:id" element={<StudentTestPage />} />
       <Route path="/attempts/:id" element={<AttemptPage />} />
+      <Route path="/attempts/:id/submitted" element={<AttemptSubmittedPage />} />
       {user ? (
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />

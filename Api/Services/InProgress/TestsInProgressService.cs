@@ -206,4 +206,69 @@ public class TestsInProgressService : ITestsInProgressService
 
         return new SaveAnswerResult.Success();
     }
+
+    public async Task<SubmitAttemptResult> SubmitAttemptAsync(string studentId, Guid attemptId, CancellationToken ct = default)
+    {
+        var attempt = await _db.AttemptsInProgress
+            .Include(a => a.Answers)
+            .FirstOrDefaultAsync(a => a.Id == attemptId && a.StudentId == studentId, ct);
+        if (attempt is null)
+        {
+            return new SubmitAttemptResult.AttemptNotFound();
+        }
+
+        var submittedAt = DateTimeOffset.UtcNow;
+        var duration = (long)Math.Max(0, (submittedAt - attempt.StartedAt).TotalSeconds);
+
+        var submitted = new AttemptSubmitted
+        {
+            PublishedTestId = attempt.PublishedTestId,
+            StudentId = attempt.StudentId,
+            StartedAt = attempt.StartedAt,
+            SubmittedAt = submittedAt,
+            DurationSeconds = duration,
+            Answers = attempt.Answers.Select(ToSubmitted).ToList(),
+        };
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        _db.AttemptsSubmitted.Add(submitted);
+        _db.AnswersInProgress.RemoveRange(attempt.Answers);
+        _db.AttemptsInProgress.Remove(attempt);
+
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return new SubmitAttemptResult.Success(submitted.Id);
+    }
+
+    private static AnswerSubmitted ToSubmitted(AnswerInProgress a) => a switch
+    {
+        SingleAnswerInProgress s => new SingleAnswerSubmitted
+        {
+            PublishedQuestionId = s.PublishedQuestionId,
+            SelectedOptionOrder = s.SelectedOptionOrder,
+        },
+        MultipleAnswersInProgress m => new MultipleAnswersSubmitted
+        {
+            PublishedQuestionId = m.PublishedQuestionId,
+            SelectedOptionOrders = m.SelectedOptionOrders.ToList(),
+        },
+        TextAnswerInProgress t => new TextAnswerSubmitted
+        {
+            PublishedQuestionId = t.PublishedQuestionId,
+            Text = t.Text,
+        },
+        CodeAnswerInProgress c => new CodeAnswerSubmitted
+        {
+            PublishedQuestionId = c.PublishedQuestionId,
+            Text = c.Text,
+        },
+        DiagramAnswerInProgress d => new DiagramAnswerSubmitted
+        {
+            PublishedQuestionId = d.PublishedQuestionId,
+            Text = d.Text,
+        },
+        _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
+    };
 }

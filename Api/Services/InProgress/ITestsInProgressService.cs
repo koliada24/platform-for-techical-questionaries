@@ -21,6 +21,14 @@ public interface ITestsInProgressService
     Task<SaveAnswerResult> SaveDiagramAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveDiagramAnswerInput input, CancellationToken ct = default);
 
     Task<ClearAnswerResult> ClearAnswerAsync(string studentId, Guid attemptId, Guid questionId, CancellationToken ct = default);
+
+    Task<SubmitAttemptResult> SubmitAttemptAsync(string studentId, Guid attemptId, CancellationToken ct = default);
+}
+
+public abstract record SubmitAttemptResult
+{
+    public sealed record Success(Guid SubmittedAttemptId) : SubmitAttemptResult;
+    public sealed record AttemptNotFound : SubmitAttemptResult;
 }
 
 public abstract record StartAttemptResult

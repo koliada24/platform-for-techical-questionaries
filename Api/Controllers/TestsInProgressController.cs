@@ -74,6 +74,18 @@ public class TestsInProgressController : ControllerBase
         };
     }
 
+    [HttpPost("attempts/{attemptId:guid}/submit")]
+    public async Task<IActionResult> SubmitAttempt(Guid attemptId, CancellationToken ct)
+    {
+        var result = await _service.SubmitAttemptAsync(CurrentUserId, attemptId, ct);
+        return result switch
+        {
+            SubmitAttemptResult.Success s => Ok(new { submittedAttemptId = s.SubmittedAttemptId }),
+            SubmitAttemptResult.AttemptNotFound => NotFound(new { error = "Attempt not found." }),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
+    }
+
     private async Task<IActionResult> MapSaveResult(Task<SaveAnswerResult> task)
     {
         var result = await task;

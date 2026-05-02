@@ -62,4 +62,8 @@ export const attemptsApi = {
     api.put<void>(`/api/attempts/${attemptId}/questions/${questionId}/diagram-answer`, { text }),
   clearAnswer: (attemptId: string, questionId: string) =>
     api.delete<void>(`/api/attempts/${attemptId}/questions/${questionId}/answer`),
+  submit: (attemptId: string) =>
+    api
+      .post<{ submittedAttemptId: string }>(`/api/attempts/${attemptId}/submit`)
+      .then((r) => r.data),
 };

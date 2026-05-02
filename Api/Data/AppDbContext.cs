@@ -17,6 +17,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PublishedQuestion> PublishedQuestions => Set<PublishedQuestion>();
     public DbSet<AttemptInProgress> AttemptsInProgress => Set<AttemptInProgress>();
     public DbSet<AnswerInProgress> AnswersInProgress => Set<AnswerInProgress>();
+    public DbSet<AttemptSubmitted> AttemptsSubmitted => Set<AttemptSubmitted>();
+    public DbSet<AnswerSubmitted> AnswersSubmitted => Set<AnswerSubmitted>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -154,6 +156,60 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasMaxLength(10000);
 
         builder.Entity<DiagramAnswerInProgress>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
+
+        builder.Entity<AttemptSubmitted>(e =>
+        {
+            e.ToTable("SUBMITTED_TestAttempts");
+            e.HasOne(x => x.PublishedTest)
+                .WithMany()
+                .HasForeignKey(x => x.PublishedTestId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.StudentId, x.PublishedTestId });
+        });
+
+        builder.Entity<AnswerSubmitted>(e =>
+        {
+            e.ToTable("SUBMITTED_TestAnswers");
+            e.HasDiscriminator<string>("AnswerType")
+                .HasValue<SingleAnswerSubmitted>("Single")
+                .HasValue<MultipleAnswersSubmitted>("Multiple")
+                .HasValue<TextAnswerSubmitted>("Text")
+                .HasValue<CodeAnswerSubmitted>("Code")
+                .HasValue<DiagramAnswerSubmitted>("Diagram");
+            e.HasOne(x => x.AttemptSubmitted)
+                .WithMany(a => a.Answers)
+                .HasForeignKey(x => x.AttemptSubmittedId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.PublishedQuestion)
+                .WithMany()
+                .HasForeignKey(x => x.PublishedQuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.AttemptSubmittedId, x.PublishedQuestionId }).IsUnique();
+        });
+
+        builder.Entity<MultipleAnswersSubmitted>()
+            .Property(x => x.SelectedOptionOrders)
+            .HasConversion(
+                v => string.Join(',', v),
+                v => string.IsNullOrEmpty(v)
+                    ? new List<int>()
+                    : v.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList());
+
+        builder.Entity<TextAnswerSubmitted>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
+
+        builder.Entity<CodeAnswerSubmitted>()
+            .Property(x => x.Text)
+            .HasMaxLength(10000);
+
+        builder.Entity<DiagramAnswerSubmitted>()
             .Property(x => x.Text)
             .HasMaxLength(10000);
     }

@@ -50,6 +50,8 @@ export function AttemptPage() {
   const [clearing, setClearing] = useState(false);
 
   const [showFinish, setShowFinish] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const isStudent = user?.role === 'Student';
   const returnUrl = id ? `/attempts/${id}` : '/';
@@ -388,20 +390,50 @@ export function AttemptPage() {
         </Button>
       </div>
 
-      <Modal show={showFinish} onHide={() => setShowFinish(false)} centered>
-        <Modal.Header closeButton>
+      <Modal show={showFinish} onHide={() => (submitting ? null : setShowFinish(false))} centered>
+        <Modal.Header closeButton={!submitting}>
           <Modal.Title>Finish test?</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           Are you sure you want to finish and submit your answers? You won&apos;t be able to
           change them afterwards.
+          {submitError && (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {submitError}
+            </Alert>
+          )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setShowFinish(false)}>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setShowFinish(false)}
+            disabled={submitting}
+          >
             Cancel
           </Button>
-          <Button variant="danger" onClick={() => setShowFinish(false)}>
-            Finish
+          <Button
+            variant="danger"
+            disabled={submitting}
+            onClick={async () => {
+              if (!attempt) return;
+              setSubmitting(true);
+              setSubmitError(null);
+              try {
+                await attemptsApi.submit(attempt.id);
+                window.localStorage.removeItem(idxStorageKey(attempt.id));
+                navigate(`/attempts/${attempt.id}/submitted`, { replace: true });
+              } catch (e) {
+                let msg = 'Failed to submit attempt.';
+                if (axios.isAxiosError(e)) {
+                  msg = (e.response?.data as { error?: string } | undefined)?.error ?? msg;
+                }
+                setSubmitError(msg);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {submitting ? 'Submitting…' : 'Finish'}
           </Button>
         </Modal.Footer>
       </Modal>
