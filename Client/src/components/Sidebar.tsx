@@ -44,6 +44,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         <NavLink to="/test-templates" className={linkClass}>
           Templates Management
         </NavLink>
+        <NavLink to="/published-tests" className={linkClass}>
+          Published Tests
+        </NavLink>
       </nav>
     </aside>
   );

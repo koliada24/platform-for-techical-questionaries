@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TestTemplatesManagementPage } from './pages/TestTemplatesManagementPage';
 import { TestTemplateEditorPage } from './pages/TestTemplateEditorPage';
+import { PublishedTestsPage } from './pages/PublishedTestsPage';
 import { StudentTestPage } from './pages/StudentTestPage';
 import { AttemptPage } from './pages/AttemptPage';
 import { AttemptSubmittedPage } from './pages/AttemptSubmittedPage';
@@ -42,6 +43,7 @@ function Shell() {
           <Route path="/test-templates" element={<TestTemplatesManagementPage />} />
           <Route path="/test-templates/new" element={<TestTemplateEditorPage />} />
           <Route path="/test-templates/:id/edit" element={<TestTemplateEditorPage />} />
+          <Route path="/published-tests" element={<PublishedTestsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       ) : (
