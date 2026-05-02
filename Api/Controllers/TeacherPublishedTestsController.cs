@@ -27,4 +27,14 @@ public class TeacherPublishedTestsController : ControllerBase
         var items = await _service.ListForTeacherAsync(CurrentUserId, ct);
         return Ok(items);
     }
+
+    [HttpGet("details")]
+    public async Task<IActionResult> Details(
+        [FromQuery] Guid testTemplateId,
+        [FromQuery] DateTimeOffset closesAt,
+        CancellationToken ct)
+    {
+        var detail = await _service.GetDetailForTeacherAsync(CurrentUserId, testTemplateId, closesAt, ct);
+        return detail is null ? NotFound() : Ok(detail);
+    }
 }

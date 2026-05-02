@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Badge, Card, Container, Spinner, Table } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { publishedTestsApi, type PublishedTestListItemDto } from '../api/publishedTests';
 
@@ -10,6 +11,7 @@ function formatDateTime(iso: string): string {
 }
 
 export function PublishedTestsPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<PublishedTestListItemDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +71,15 @@ export function PublishedTestsPage() {
               {items.map((t) => {
                 const closed = new Date(t.closesAt).getTime() <= Date.now();
                 return (
-                  <tr key={`${t.testTemplateId}-${t.closesAt}`}>
+                  <tr
+                    key={`${t.testTemplateId}-${t.closesAt}`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() =>
+                      navigate(
+                        `/published-tests/${t.testTemplateId}?closesAt=${encodeURIComponent(t.closesAt)}`,
+                      )
+                    }
+                  >
                     <td>
                       <div className="fw-semibold">{t.name}</div>
                       {t.description && (
