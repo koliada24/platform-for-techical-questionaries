@@ -375,7 +375,7 @@ export function AttemptPage() {
                 onClick={handleAnswer}
                 disabled={saving || clearing || question.type === 'Code' || question.type === 'Diagram'}
               >
-                {saving ? 'Saving…' : 'Answer'}
+                {saving ? 'Saving…' : 'Next question'}
               </Button>
             </div>
           </Card.Body>

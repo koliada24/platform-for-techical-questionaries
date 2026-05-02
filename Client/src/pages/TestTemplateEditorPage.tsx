@@ -237,18 +237,11 @@ export function TestTemplateEditorPage() {
           </Card.Body>
         </Card>
 
-        <div className="d-flex justify-content-between align-items-center mb-2">
+        <div className="mb-2">
           <h5 className="mb-0">Questions</h5>
-          <Button
-            size="sm"
-            variant="outline-primary"
-            onClick={() => questions.append(blankQuestion())}
-          >
-            <PlusIcon /> Add question
-          </Button>
         </div>
 
-        <Stack gap={3} className="mb-4">
+        <Stack gap={3} className="mb-2">
           {questions.fields.map((q, qi) => (
             <Card key={q.id}>
               <Card.Body>
@@ -328,6 +321,19 @@ export function TestTemplateEditorPage() {
             </Card>
           ))}
         </Stack>
+
+        <div className="d-flex flex-column align-items-start mb-4">
+          {errors.questions?.root?.message && (
+            <div className="text-danger small mb-2">{errors.questions.root.message}</div>
+          )}
+          <Button
+            size="sm"
+            variant="outline-primary"
+            onClick={() => questions.append(blankQuestion())}
+          >
+            <PlusIcon /> Add question
+          </Button>
+        </div>
 
         <div className="d-flex gap-2 justify-content-end">
           <Button variant="secondary" onClick={() => navigate('/test-templates')} disabled={isSubmitting}>
