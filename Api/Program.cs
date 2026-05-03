@@ -134,6 +134,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+
+// Enable WebSockets BEFORE auth so the auth middleware can authorize the upgrade.
+// Restrict origins to the configured SPA so other sites can't open LSP sessions.
+var wsOptions = new WebSocketOptions();
+wsOptions.AllowedOrigins.Add(clientBaseUrl);
+app.UseWebSockets(wsOptions);
+
 app.UseAuthentication();
 app.UseAuthorization();
 

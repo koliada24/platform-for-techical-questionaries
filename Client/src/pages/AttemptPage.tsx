@@ -570,6 +570,7 @@ function QuestionInput(props: QuestionInputProps) {
           language={question.codeLanguage}
           value={textPicks[question.id] ?? ''}
           onChange={(v) => setTextPicks((prev) => ({ ...prev, [question.id]: v }))}
+          enableLsp
         />
       );
     case 'Diagram':
