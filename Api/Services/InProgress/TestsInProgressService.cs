@@ -239,6 +239,21 @@ public class TestsInProgressService : ITestsInProgressService
             .Select(a => ToSubmitted(a, questionsById))
             .ToList();
 
+        // Ensure every question has a submitted-answer row, even if the student left it blank.
+        // Without this, the teacher has nothing to attach a manual mark to.
+        var answeredQuestionIds = submittedAnswers.Select(a => a.PublishedQuestionId).ToHashSet();
+        foreach (var question in questions)
+        {
+            if (answeredQuestionIds.Contains(question.Id)) continue;
+            var blank = CreateBlankSubmitted(question);
+            // Auto-evaluated types: a blank choice answer is worth 0.
+            if (blank is SingleAnswerSubmitted or MultipleAnswersSubmitted)
+            {
+                blank.Mark = 0;
+            }
+            submittedAnswers.Add(blank);
+        }
+
         var evaluatedMark = submittedAnswers.Sum(a => a.Mark ?? 0);
 
         var submitted = new AttemptSubmitted
@@ -365,4 +380,34 @@ public class TestsInProgressService : ITestsInProgressService
 
         return submitted;
     }
+
+    private static AnswerSubmitted CreateBlankSubmitted(PublishedQuestion question) => question.Type switch
+    {
+        QuestionType.SingleAnswer => new SingleAnswerSubmitted
+        {
+            PublishedQuestionId = question.Id,
+            SelectedOptionOrder = null,
+        },
+        QuestionType.MultipleAnswers => new MultipleAnswersSubmitted
+        {
+            PublishedQuestionId = question.Id,
+            SelectedOptionOrders = new List<int>(),
+        },
+        QuestionType.OpenAnswer => new TextAnswerSubmitted
+        {
+            PublishedQuestionId = question.Id,
+            Text = null,
+        },
+        QuestionType.Code => new CodeAnswerSubmitted
+        {
+            PublishedQuestionId = question.Id,
+            Text = null,
+        },
+        QuestionType.Diagram => new DiagramAnswerSubmitted
+        {
+            PublishedQuestionId = question.Id,
+            Text = null,
+        },
+        _ => throw new InvalidOperationException($"Unknown question type: {question.Type}"),
+    };
 }
