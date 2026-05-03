@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: ./Api
+      dockerfile: Dockerfile
+    container_name: qapp-api
+    ports:
+      # Host port matches Google OAuth registered redirect URIs (http://localhost:5107/...)
+      - "5107:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: "Data Source=/app/data/app.db"
+      Client__BaseUrl: "http://localhost:5173"
+      # Provide via .env file or shell environment; do NOT commit real secrets.
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - api-data:/app/data
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    container_name: qapp-client
+    ports:
+      # Host port matches the URL configured in API CORS / Client:BaseUrl
+      - "5173:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  api-data:

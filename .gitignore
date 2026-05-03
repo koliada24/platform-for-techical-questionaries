@@ -385,3 +385,4 @@ fabric.properties
 *-wal
 *-shm
 *.db-journal
+.env

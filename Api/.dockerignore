@@ -1,0 +1,10 @@
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/.idea
+**/*.user
+**/app.db
+**/app.db-*
+Dockerfile
+.dockerignore
