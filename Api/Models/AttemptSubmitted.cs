@@ -48,10 +48,10 @@ public class TextAnswerSubmitted : AnswerSubmitted
 
 public class CodeAnswerSubmitted : AnswerSubmitted
 {
-    public string? Text { get; set; }
+    public string? Code { get; set; }
 }
 
 public class DiagramAnswerSubmitted : AnswerSubmitted
 {
-    public string? Text { get; set; }
+    public string? Diagram { get; set; }
 }

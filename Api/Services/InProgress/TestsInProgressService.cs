@@ -66,8 +66,8 @@ public class TestsInProgressService : ITestsInProgressService
         SingleAnswerInProgress s => new SavedAnswerDto(QuestionType.SingleAnswer, s.SelectedOptionOrder, null, null),
         MultipleAnswersInProgress m => new SavedAnswerDto(QuestionType.MultipleAnswers, null, m.SelectedOptionOrders.ToList(), null),
         TextAnswerInProgress t => new SavedAnswerDto(QuestionType.OpenAnswer, null, null, t.Text),
-        CodeAnswerInProgress c => new SavedAnswerDto(QuestionType.Code, null, null, c.Text),
-        DiagramAnswerInProgress d => new SavedAnswerDto(QuestionType.Diagram, null, null, d.Text),
+        CodeAnswerInProgress c => new SavedAnswerDto(QuestionType.Code, null, null, c.Code),
+        DiagramAnswerInProgress d => new SavedAnswerDto(QuestionType.Diagram, null, null, d.Diagram),
         _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
     };
 
@@ -139,12 +139,12 @@ public class TestsInProgressService : ITestsInProgressService
 
     public Task<SaveAnswerResult> SaveCodeAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveCodeAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.Code,
-            () => new CodeAnswerInProgress { Text = input.Text },
+            () => new CodeAnswerInProgress { Code = input.Text },
             ct);
 
     public Task<SaveAnswerResult> SaveDiagramAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveDiagramAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.Diagram,
-            () => new DiagramAnswerInProgress { Text = input.Text },
+            () => new DiagramAnswerInProgress { Diagram = input.Text },
             ct);
 
     public async Task<ClearAnswerResult> ClearAnswerAsync(string studentId, Guid attemptId, Guid questionId, CancellationToken ct = default)
@@ -363,12 +363,12 @@ public class TestsInProgressService : ITestsInProgressService
             CodeAnswerInProgress c => new CodeAnswerSubmitted
             {
                 PublishedQuestionId = c.PublishedQuestionId,
-                Text = c.Text,
+                Code = c.Code,
             },
             DiagramAnswerInProgress d => new DiagramAnswerSubmitted
             {
                 PublishedQuestionId = d.PublishedQuestionId,
-                Text = d.Text,
+                Diagram = d.Diagram,
             },
             _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
         };
@@ -402,12 +402,12 @@ public class TestsInProgressService : ITestsInProgressService
         QuestionType.Code => new CodeAnswerSubmitted
         {
             PublishedQuestionId = question.Id,
-            Text = null,
+            Code = null,
         },
         QuestionType.Diagram => new DiagramAnswerSubmitted
         {
             PublishedQuestionId = question.Id,
-            Text = null,
+            Diagram = null,
         },
         _ => throw new InvalidOperationException($"Unknown question type: {question.Type}"),
     };

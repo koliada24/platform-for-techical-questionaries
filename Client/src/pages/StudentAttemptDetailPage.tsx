@@ -19,6 +19,7 @@ import {
   type SetManualMarkInput,
 } from '../api/publishedTests';
 import { CodeEditor } from '../components/CodeEditor';
+import { DiagramEditor, parseDiagramPayload } from '../components/DiagramEditor';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -410,8 +411,7 @@ function AnswerView({ question }: { question: AttemptQuestionForTeacherDto }) {
         </ul>
       );
     }
-    case 'OpenAnswer':
-    case 'Diagram': {
+    case 'OpenAnswer': {
       const text = question.answerText ?? '';
       if (!text.trim()) {
         return <div className="text-muted fst-italic">No answer provided.</div>;
@@ -423,6 +423,23 @@ function AnswerView({ question }: { question: AttemptQuestionForTeacherDto }) {
         >
           {text}
         </pre>
+      );
+    }
+    case 'Diagram': {
+      const raw = question.answerText ?? '';
+      const payload = parseDiagramPayload(raw);
+      if (!payload || payload.scene.elements.length === 0) {
+        return <div className="text-muted fst-italic">No answer provided.</div>;
+      }
+      // `key` forces a fresh editor mount per submission so initialData seeds
+      // correctly when navigating between students.
+      return (
+        <DiagramEditor
+          key={question.publishedQuestionId}
+          value={raw}
+          readOnly
+          height={480}
+        />
       );
     }
     case 'Code': {

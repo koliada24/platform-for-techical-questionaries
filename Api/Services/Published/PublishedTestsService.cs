@@ -316,10 +316,10 @@ public class PublishedTestsService : IPublishedTestsService
                         answerText = t.Text;
                         break;
                     case CodeAnswerSubmitted c:
-                        answerText = c.Text;
+                        answerText = c.Code;
                         break;
                     case DiagramAnswerSubmitted d:
-                        answerText = d.Text;
+                        answerText = d.Diagram;
                         break;
                 }
 

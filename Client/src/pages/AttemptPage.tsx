@@ -14,6 +14,7 @@ import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { CodeEditor } from '../components/CodeEditor';
+import { DiagramEditor } from '../components/DiagramEditor';
 import {
   attemptsApi,
   type AttemptForStudentDto,
@@ -233,14 +234,16 @@ export function AttemptPage() {
     }
   };
 
-  // Debounced autosave for Code answers (Monaco doesn't have a "Next" gesture).
-  // Tracks the last value we successfully sent per questionId so we don't keep
-  // re-saving identical content (e.g. on hydration or after navigating back).
+  // Debounced autosave for Code / Diagram answers — neither has a natural
+  // "Next" gesture, and the Diagram editor itself already debounces upstream
+  // before calling onChange. Tracks the last value we successfully sent per
+  // questionId so we don't keep re-saving identical content (e.g. on
+  // hydration or after navigating back).
   const lastSavedCodeRef = useRef<Record<string, string>>({});
   useEffect(() => {
     if (!attempt) return;
     const q = attempt.questions[currentIdx];
-    if (!q || q.type !== 'Code') return;
+    if (!q || (q.type !== 'Code' && q.type !== 'Diagram')) return;
 
     const current = textPicks[q.id] ?? '';
     // Seed on first sight so we don't autosave the hydrated value back unchanged.
@@ -250,9 +253,14 @@ export function AttemptPage() {
     }
     if (lastSavedCodeRef.current[q.id] === current) return;
 
+    const save =
+      q.type === 'Diagram'
+        ? attemptsApi.saveDiagramAnswer
+        : attemptsApi.saveCodeAnswer;
+
     const timer = window.setTimeout(async () => {
       try {
-        await attemptsApi.saveCodeAnswer(attempt.id, q.id, current);
+        await save(attempt.id, q.id, current);
         lastSavedCodeRef.current[q.id] = current;
         setAnsweredIds((prev) => {
           if (current.length === 0 || prev.has(q.id)) return prev;
@@ -420,7 +428,7 @@ export function AttemptPage() {
               <Button
                 variant="primary"
                 onClick={handleAnswer}
-                disabled={saving || clearing || question.type === 'Diagram'}
+                disabled={saving || clearing}
               >
                 {saving ? 'Saving…' : 'Next question'}
               </Button>
@@ -575,9 +583,10 @@ function QuestionInput(props: QuestionInputProps) {
       );
     case 'Diagram':
       return (
-        <Alert variant="secondary" className="mb-0">
-          Diagram editor will be available soon.
-        </Alert>
+        <DiagramEditor
+          value={textPicks[question.id] ?? ''}
+          onChange={(v) => setTextPicks((prev) => ({ ...prev, [question.id]: v }))}
+        />
       );
     default:
       return null;

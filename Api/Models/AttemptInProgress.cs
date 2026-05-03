@@ -39,10 +39,10 @@ public class TextAnswerInProgress : AnswerInProgress
 
 public class CodeAnswerInProgress : AnswerInProgress
 {
-    public string? Text { get; set; }
+    public string? Code { get; set; }
 }
 
 public class DiagramAnswerInProgress : AnswerInProgress
 {
-    public string? Text { get; set; }
+    public string? Diagram { get; set; }
 }
