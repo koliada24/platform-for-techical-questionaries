@@ -7,6 +7,7 @@ import axios from 'axios';
 import { testTemplatesApi } from '../api/testTemplates';
 import type { QuestionType, TestTemplateDto, TestTemplateInput } from '../types/testTemplates';
 import { PlusIcon, TrashIcon } from '../components/icons';
+import { CODE_LANGUAGES } from '../components/CodeEditor';
 
 type FormValues = {
   name: string;
@@ -18,6 +19,7 @@ type FormValues = {
     text: string;
     mark: number | '';
     type: QuestionType;
+    codeLanguage: string;
     answers: { text: string; isCorrect: boolean }[];
   }[];
 };
@@ -37,6 +39,7 @@ const blankQuestion = () => ({
   text: '',
   mark: 1 as number | '',
   type: 'SingleAnswer' as QuestionType,
+  codeLanguage: 'plaintext',
   answers: [blankAnswer(), blankAnswer()],
 });
 
@@ -60,6 +63,7 @@ function dtoToForm(template: TestTemplateDto | null): FormValues {
       text: q.text,
       mark: q.mark,
       type: q.type,
+      codeLanguage: q.codeLanguage ?? 'plaintext',
       answers: hasOptions(q.type)
         ? q.answers.map((a) => ({ text: a.text, isCorrect: a.isCorrect }))
         : [],
@@ -81,6 +85,7 @@ function formToInput(values: FormValues): TestTemplateInput {
       order: i,
       mark: typeof q.mark === 'number' ? q.mark : 1,
       type: q.type,
+      codeLanguage: q.type === 'Code' ? (q.codeLanguage || 'plaintext') : null,
       answers: hasOptions(q.type)
         ? q.answers.map((a) => ({ text: a.text.trim(), isCorrect: a.isCorrect }))
         : [],
@@ -402,6 +407,30 @@ interface AnswersProps {
 function AnswersField({ qi, control, register, setValue, trigger, errors }: AnswersProps) {
   const answers = useFieldArray({ control, name: `questions.${qi}.answers` });
   const type = useWatch({ control, name: `questions.${qi}.type` });
+
+  if (type === 'Code') {
+    return (
+      <div style={{ maxWidth: 260 }}>
+        <Form.Label className="small text-muted mb-1">Language</Form.Label>
+        <Controller
+          control={control}
+          name={`questions.${qi}.codeLanguage`}
+          render={({ field }) => (
+            <Form.Select
+              value={field.value ?? 'plaintext'}
+              onChange={(e) => field.onChange(e.target.value)}
+            >
+              {CODE_LANGUAGES.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Form.Select>
+          )}
+        />
+      </div>
+    );
+  }
 
   if (!hasOptions(type)) {
     return (

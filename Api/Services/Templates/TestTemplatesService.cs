@@ -106,6 +106,7 @@ public class TestTemplatesService : ITestTemplatesService
         questionToUpdate.Order = questionInput.Order;
         questionToUpdate.Mark = questionInput.Mark;
         questionToUpdate.Type = questionInput.Type;
+        questionToUpdate.CodeLanguage = NormalizeCodeLanguage(questionInput);
         questionToUpdate.Answers = MapAnswers(questionInput.Answers);
     }
 
@@ -183,6 +184,7 @@ public class TestTemplatesService : ITestTemplatesService
                         Order = q.Order,
                         Mark = q.Mark,
                         Type = q.Type,
+                        CodeLanguage = q.CodeLanguage,
                         Answers = q.Answers
                             .OrderBy(a => a.Order)
                             .Select(a => new Answer { Text = a.Text, IsCorrect = a.IsCorrect, Order = a.Order })
@@ -242,8 +244,16 @@ public class TestTemplatesService : ITestTemplatesService
         Order = qIn.Order,
         Mark = qIn.Mark,
         Type = qIn.Type,
+        CodeLanguage = NormalizeCodeLanguage(qIn),
         Answers = MapAnswers(qIn.Answers)
     };
+
+    private static string? NormalizeCodeLanguage(QuestionTemplateInput qIn)
+    {
+        if (qIn.Type != QuestionType.Code) return null;
+        var v = qIn.CodeLanguage?.Trim();
+        return string.IsNullOrEmpty(v) ? null : v.ToLowerInvariant();
+    }
 
     private static List<Answer> MapAnswers(List<AnswerInput> answers)
     {
@@ -264,7 +274,7 @@ public class TestTemplatesService : ITestTemplatesService
     private static TestTemplateDto MapToDto(TestTemplate t) => new(
         t.Id, t.Name, t.Description, t.TimeLimitMinutes, t.CreatedAt, t.UpdatedAt,
         t.Questions.OrderBy(q => q.Order).Select(q => new QuestionTemplateDto(
-            q.Id, q.Text, q.Order, q.Mark, q.Type,
+            q.Id, q.Text, q.Order, q.Mark, q.Type, q.CodeLanguage,
             q.Answers.OrderBy(a => a.Order)
                 .Select(a => new AnswerDto(a.Text, a.IsCorrect, a.Order))
                 .ToList()

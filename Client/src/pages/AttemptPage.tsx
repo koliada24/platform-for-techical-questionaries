@@ -13,6 +13,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { CodeEditor } from '../components/CodeEditor';
 import {
   attemptsApi,
   type AttemptForStudentDto,
@@ -220,6 +221,7 @@ export function AttemptPage() {
         next.delete(q.id);
         return next;
       });
+      lastSavedCodeRef.current[q.id] = '';
     } catch (e) {
       let msg = 'Failed to clear answer.';
       if (axios.isAxiosError(e)) {
@@ -230,6 +232,45 @@ export function AttemptPage() {
       setClearing(false);
     }
   };
+
+  // Debounced autosave for Code answers (Monaco doesn't have a "Next" gesture).
+  // Tracks the last value we successfully sent per questionId so we don't keep
+  // re-saving identical content (e.g. on hydration or after navigating back).
+  const lastSavedCodeRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (!attempt) return;
+    const q = attempt.questions[currentIdx];
+    if (!q || q.type !== 'Code') return;
+
+    const current = textPicks[q.id] ?? '';
+    // Seed on first sight so we don't autosave the hydrated value back unchanged.
+    if (!(q.id in lastSavedCodeRef.current)) {
+      lastSavedCodeRef.current[q.id] = current;
+      return;
+    }
+    if (lastSavedCodeRef.current[q.id] === current) return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        await attemptsApi.saveCodeAnswer(attempt.id, q.id, current);
+        lastSavedCodeRef.current[q.id] = current;
+        setAnsweredIds((prev) => {
+          if (current.length === 0 || prev.has(q.id)) return prev;
+          const next = new Set(prev);
+          next.add(q.id);
+          return next;
+        });
+      } catch (e) {
+        let msg = 'Failed to save answer.';
+        if (axios.isAxiosError(e)) {
+          msg = (e.response?.data as { error?: string } | undefined)?.error ?? msg;
+        }
+        setSaveError(msg);
+      }
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [attempt, currentIdx, textPicks]);
 
   // Early-return states ---------------------------------------------
   if (!id) {
@@ -379,7 +420,7 @@ export function AttemptPage() {
               <Button
                 variant="primary"
                 onClick={handleAnswer}
-                disabled={saving || clearing || question.type === 'Code' || question.type === 'Diagram'}
+                disabled={saving || clearing || question.type === 'Diagram'}
               >
                 {saving ? 'Saving…' : 'Next question'}
               </Button>
@@ -525,9 +566,11 @@ function QuestionInput(props: QuestionInputProps) {
     }
     case 'Code':
       return (
-        <Alert variant="secondary" className="mb-0">
-          Code editor will be available soon.
-        </Alert>
+        <CodeEditor
+          language={question.codeLanguage}
+          value={textPicks[question.id] ?? ''}
+          onChange={(v) => setTextPicks((prev) => ({ ...prev, [question.id]: v }))}
+        />
       );
     case 'Diagram':
       return (

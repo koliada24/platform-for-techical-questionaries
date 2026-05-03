@@ -27,5 +27,9 @@ public class PublishedQuestion
     public int Order { get; set; }
     public int Mark { get; set; } = 1;
     public QuestionType Type { get; set; } = QuestionType.SingleAnswer;
+    /// <summary>
+    /// Snapshot of the template's CodeLanguage at publish time. Null for non-code questions.
+    /// </summary>
+    public string? CodeLanguage { get; set; }
     public List<Answer> Answers { get; set; } = new();
 }

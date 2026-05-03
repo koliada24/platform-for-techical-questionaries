@@ -95,6 +95,7 @@ export interface AttemptQuestionForTeacherDto {
   order: number;
   maxMark: number;
   type: QuestionType;
+  codeLanguage: string | null;
   options: AttemptAnswerOptionDto[];
   selectedOptionOrder: number | null;
   selectedOptionOrders: number[] | null;

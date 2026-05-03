@@ -54,6 +54,7 @@ public record AttemptQuestionForTeacherDto(
     int Order,
     int MaxMark,
     Api.Models.QuestionType Type,
+    string? CodeLanguage,
     System.Collections.Generic.List<AttemptAnswerOptionDto> Options,
     int? SelectedOptionOrder,
     System.Collections.Generic.List<int>? SelectedOptionOrders,

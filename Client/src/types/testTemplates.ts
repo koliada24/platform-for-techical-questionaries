@@ -17,6 +17,7 @@ export interface QuestionDto {
   order: number;
   mark: number;
   type: QuestionType;
+  codeLanguage: string | null;
   answers: AnswerDto[];
 }
 
@@ -52,6 +53,7 @@ export interface QuestionInput {
   order: number;
   mark: number;
   type: QuestionType;
+  codeLanguage: string | null;
   answers: AnswerInput[];
 }
 

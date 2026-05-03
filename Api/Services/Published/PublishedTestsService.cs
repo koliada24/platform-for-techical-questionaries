@@ -331,6 +331,7 @@ public class PublishedTestsService : IPublishedTestsService
                     q.Order,
                     q.Mark,
                     q.Type,
+                    q.CodeLanguage,
                     q.Answers.OrderBy(a => a.Order)
                         .Select(a => new AttemptAnswerOptionDto(a.Order, a.Text, a.IsCorrect))
                         .ToList(),

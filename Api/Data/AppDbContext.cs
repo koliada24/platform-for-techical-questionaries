@@ -59,6 +59,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("TEMPLATE_Questions");
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
+            e.Property(x => x.CodeLanguage).HasMaxLength(50);
             e.HasOne(x => x.TestTemplate)
                 .WithMany(t => t.Questions)
                 .HasForeignKey(x => x.TestTemplateId)
@@ -93,6 +94,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.ToTable("PUBLISHED_Questions");
             e.Property(x => x.Text).IsRequired().HasMaxLength(2000);
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
+            e.Property(x => x.CodeLanguage).HasMaxLength(50);
             e.HasOne(x => x.PublishedTest)
                 .WithMany(t => t.Questions)
                 .HasForeignKey(x => x.PublishedTestId)
@@ -153,7 +155,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<CodeAnswerInProgress>()
             .Property(x => x.Text)
-            .HasMaxLength(10000);
+            .HasMaxLength(200000);
 
         builder.Entity<DiagramAnswerInProgress>()
             .Property(x => x.Text)
@@ -207,7 +209,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<CodeAnswerSubmitted>()
             .Property(x => x.Text)
-            .HasMaxLength(10000);
+            .HasMaxLength(200000);
 
         builder.Entity<DiagramAnswerSubmitted>()
             .Property(x => x.Text)

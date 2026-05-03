@@ -24,6 +24,7 @@ export interface AttemptQuestionForStudentDto {
   text: string;
   order: number;
   type: QuestionType;
+  codeLanguage: string | null;
   options: AnswerOptionForStudentDto[];
   savedAnswer: SavedAnswerDto | null;
 }

@@ -18,6 +18,7 @@ import {
   type AttemptQuestionForTeacherDto,
   type SetManualMarkInput,
 } from '../api/publishedTests';
+import { CodeEditor } from '../components/CodeEditor';
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -410,7 +411,6 @@ function AnswerView({ question }: { question: AttemptQuestionForTeacherDto }) {
       );
     }
     case 'OpenAnswer':
-    case 'Code':
     case 'Diagram': {
       const text = question.answerText ?? '';
       if (!text.trim()) {
@@ -419,10 +419,24 @@ function AnswerView({ question }: { question: AttemptQuestionForTeacherDto }) {
       return (
         <pre
           className="mb-0 p-2 bg-body-tertiary border rounded"
-          style={{ whiteSpace: 'pre-wrap', fontFamily: question.type === 'Code' ? 'monospace' : 'inherit' }}
+          style={{ whiteSpace: 'pre-wrap' }}
         >
           {text}
         </pre>
+      );
+    }
+    case 'Code': {
+      const text = question.answerText ?? '';
+      if (!text.trim()) {
+        return <div className="text-muted fst-italic">No answer provided.</div>;
+      }
+      return (
+        <CodeEditor
+          value={text}
+          language={question.codeLanguage}
+          readOnly
+          height={Math.min(480, Math.max(180, text.split('\n').length * 20 + 40))}
+        />
       );
     }
   }

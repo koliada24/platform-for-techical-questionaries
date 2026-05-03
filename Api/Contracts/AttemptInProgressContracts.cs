@@ -22,6 +22,7 @@ public record AttemptQuestionForStudentDto(
     string Text,
     int Order,
     QuestionType Type,
+    string? CodeLanguage,
     List<AnswerOptionForStudentDto> Options,
     SavedAnswerDto? SavedAnswer
 );

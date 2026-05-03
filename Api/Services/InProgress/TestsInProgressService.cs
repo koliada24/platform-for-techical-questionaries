@@ -97,6 +97,7 @@ public class TestsInProgressService : ITestsInProgressService
                 q.Text,
                 q.Order,
                 q.Type,
+                q.CodeLanguage,
                 q.Answers
                     .OrderBy(a => a.Order)
                     .Select(a => new AnswerOptionForStudentDto(a.Order, a.Text))
