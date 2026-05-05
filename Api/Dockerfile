@@ -32,13 +32,8 @@ RUN apt-get update \
 ENV PATH="/root/.dotnet/tools:${PATH}"
 RUN dotnet tool install --global csharp-ls
 
-# Persisted SQLite location
-RUN mkdir -p /app/data
-VOLUME ["/app/data"]
-
 ENV ASPNETCORE_URLS=http://+:8080 \
-    ASPNETCORE_ENVIRONMENT=Production \
-    ConnectionStrings__Default="Data Source=/app/data/app.db"
+    ASPNETCORE_ENVIRONMENT=Production
 
 EXPOSE 8080
 
