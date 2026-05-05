@@ -14,6 +14,7 @@ import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { CodeEditor } from '../components/CodeEditor';
+import { CodeRunner } from '../components/CodeRunner';
 import { DiagramEditor } from '../components/DiagramEditor';
 import {
   attemptsApi,
@@ -574,12 +575,18 @@ function QuestionInput(props: QuestionInputProps) {
     }
     case 'Code':
       return (
-        <CodeEditor
-          language={question.codeLanguage}
-          value={textPicks[question.id] ?? ''}
-          onChange={(v) => setTextPicks((prev) => ({ ...prev, [question.id]: v }))}
-          enableLsp
-        />
+        <>
+          <CodeEditor
+            language={question.codeLanguage}
+            value={textPicks[question.id] ?? ''}
+            onChange={(v) => setTextPicks((prev) => ({ ...prev, [question.id]: v }))}
+            enableLsp
+          />
+          <CodeRunner
+            code={textPicks[question.id] ?? ''}
+            language={question.codeLanguage}
+          />
+        </>
       );
     case 'Diagram':
       return (

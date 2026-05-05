@@ -68,3 +68,18 @@ export const attemptsApi = {
       .post<{ submittedAttemptId: string }>(`/api/attempts/${attemptId}/submit`)
       .then((r) => r.data),
 };
+
+export interface CodeRunResultDto {
+  success: boolean;
+  stdout: string;
+  error: string | null;
+  timedOut: boolean;
+  durationMs: number;
+}
+
+export const codeRunApi = {
+  run: (language: string, code: string) =>
+    api
+      .post<CodeRunResultDto>(`/api/code/run`, { language, code })
+      .then((r) => r.data),
+};

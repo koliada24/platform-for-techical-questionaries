@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Api.Data;
 using Api.Models;
+using Api.Services.CodeRunner;
 using Api.Services.InProgress;
 using Api.Services.Published;
 using Api.Services.Storage;
@@ -118,6 +119,9 @@ builder.Services.AddScoped<Api.Services.ITeacherProvider, Api.Services.TeacherPr
 builder.Services.AddScoped<ITestTemplatesService, TestTemplatesService>();
 builder.Services.AddScoped<IPublishedTestsService, PublishedTestsService>();
 builder.Services.AddScoped<ITestsInProgressService, TestsInProgressService>();
+
+// In-process C# code runner (Roslyn scripting). NOT sandboxed — relies on a wall-clock timeout.
+builder.Services.AddSingleton<ICodeRunner, CSharpCodeRunner>();
 
 // Object storage (MinIO) for code/diagram answer payloads.
 builder.Services.Configure<MinioOptions>(builder.Configuration.GetSection("Minio"));
