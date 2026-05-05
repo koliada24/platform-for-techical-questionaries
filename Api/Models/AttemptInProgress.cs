@@ -39,10 +39,16 @@ public class TextAnswerInProgress : AnswerInProgress
 
 public class CodeAnswerInProgress : AnswerInProgress
 {
-    public string? Code { get; set; }
+    /// <summary>
+    /// Object-storage key for the code text. Content lives in MinIO, not the database.
+    /// </summary>
+    public string? ObjectKey { get; set; }
 }
 
 public class DiagramAnswerInProgress : AnswerInProgress
 {
-    public string? Diagram { get; set; }
+    /// <summary>
+    /// Object-storage key for the diagram payload. Content lives in MinIO, not the database.
+    /// </summary>
+    public string? ObjectKey { get; set; }
 }

@@ -2,6 +2,7 @@ using Api.Contracts;
 using Api.Data;
 using Api.Models;
 using Api.Services;
+using Api.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.InProgress;
@@ -10,17 +11,26 @@ public class TestsInProgressService : ITestsInProgressService
 {
     private readonly AppDbContext _db;
     private readonly GoogleClassroomClient _classroom;
+    private readonly IObjectStorageService _storage;
     private readonly ILogger<TestsInProgressService> _logger;
 
     public TestsInProgressService(
         AppDbContext db,
         GoogleClassroomClient classroom,
+        IObjectStorageService storage,
         ILogger<TestsInProgressService> logger)
     {
         _db = db;
         _classroom = classroom;
+        _storage = storage;
         _logger = logger;
     }
+
+    private static string InProgressKey(Guid attemptId, Guid questionId) =>
+        $"inprogress/{attemptId}/{questionId}";
+
+    private static string SubmittedKey(Guid attemptSubmittedId, Guid questionId) =>
+        $"submitted/{attemptSubmittedId}/{questionId}";
 
     public async Task<StartAttemptResult> StartAttemptAsync(
         string studentId,
@@ -61,15 +71,30 @@ public class TestsInProgressService : ITestsInProgressService
     private static AttemptInProgressDto ToDto(AttemptInProgress a) =>
         new(a.Id, a.PublishedTestId, a.StartedAt);
 
-    private static SavedAnswerDto ToSavedAnswerDto(AnswerInProgress a) => a switch
+    private async Task<SavedAnswerDto> ToSavedAnswerDtoAsync(AnswerInProgress a, CancellationToken ct)
     {
-        SingleAnswerInProgress s => new SavedAnswerDto(QuestionType.SingleAnswer, s.SelectedOptionOrder, null, null),
-        MultipleAnswersInProgress m => new SavedAnswerDto(QuestionType.MultipleAnswers, null, m.SelectedOptionOrders.ToList(), null),
-        TextAnswerInProgress t => new SavedAnswerDto(QuestionType.OpenAnswer, null, null, t.Text),
-        CodeAnswerInProgress c => new SavedAnswerDto(QuestionType.Code, null, null, c.Code),
-        DiagramAnswerInProgress d => new SavedAnswerDto(QuestionType.Diagram, null, null, d.Diagram),
-        _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
-    };
+        switch (a)
+        {
+            case SingleAnswerInProgress s:
+                return new SavedAnswerDto(QuestionType.SingleAnswer, s.SelectedOptionOrder, null, null);
+            case MultipleAnswersInProgress m:
+                return new SavedAnswerDto(QuestionType.MultipleAnswers, null, m.SelectedOptionOrders.ToList(), null);
+            case TextAnswerInProgress t:
+                return new SavedAnswerDto(QuestionType.OpenAnswer, null, null, t.Text);
+            case CodeAnswerInProgress c:
+            {
+                var text = c.ObjectKey is null ? null : await _storage.GetTextAsync(c.ObjectKey, ct);
+                return new SavedAnswerDto(QuestionType.Code, null, null, text);
+            }
+            case DiagramAnswerInProgress d:
+            {
+                var text = d.ObjectKey is null ? null : await _storage.GetTextAsync(d.ObjectKey, ct);
+                return new SavedAnswerDto(QuestionType.Diagram, null, null, text);
+            }
+            default:
+                throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}");
+        }
+    }
 
     public async Task<AttemptForStudentDto?> GetForStudentAsync(
         string studentId,
@@ -88,7 +113,12 @@ public class TestsInProgressService : ITestsInProgressService
         var savedAnswers = await _db.AnswersInProgress
             .Where(a => a.AttemptInProgressId == attempt.Id)
             .ToListAsync(ct);
-        var savedByQuestion = savedAnswers.ToDictionary(a => a.PublishedQuestionId, ToSavedAnswerDto);
+
+        var savedByQuestion = new Dictionary<Guid, SavedAnswerDto>();
+        foreach (var a in savedAnswers)
+        {
+            savedByQuestion[a.PublishedQuestionId] = await ToSavedAnswerDtoAsync(a, ct);
+        }
 
         var questions = t.Questions
             .OrderBy(q => q.Order)
@@ -118,33 +148,43 @@ public class TestsInProgressService : ITestsInProgressService
 
     public Task<SaveAnswerResult> SaveSingleAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveSingleAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.SingleAnswer,
-            () => new SingleAnswerInProgress { SelectedOptionOrder = input.SelectedOptionOrder },
+            (_, _) => Task.FromResult<AnswerInProgress>(new SingleAnswerInProgress { SelectedOptionOrder = input.SelectedOptionOrder }),
             ct);
 
     public Task<SaveAnswerResult> SaveMultipleAnswersAsync(string studentId, Guid attemptId, Guid questionId, SaveMultipleAnswersInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.MultipleAnswers,
-            () => new MultipleAnswersInProgress
+            (_, _) => Task.FromResult<AnswerInProgress>(new MultipleAnswersInProgress
             {
                 SelectedOptionOrders = (input.SelectedOptionOrders ?? new List<int>())
                     .Distinct()
                     .OrderBy(x => x)
                     .ToList()
-            },
+            }),
             ct);
 
     public Task<SaveAnswerResult> SaveTextAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveTextAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.OpenAnswer,
-            () => new TextAnswerInProgress { Text = input.Text },
+            (_, _) => Task.FromResult<AnswerInProgress>(new TextAnswerInProgress { Text = input.Text }),
             ct);
 
     public Task<SaveAnswerResult> SaveCodeAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveCodeAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.Code,
-            () => new CodeAnswerInProgress { Code = input.Text },
+            async (aId, qId) =>
+            {
+                var key = InProgressKey(aId, qId);
+                await _storage.PutTextAsync(key, input.Text ?? string.Empty, ct);
+                return new CodeAnswerInProgress { ObjectKey = key };
+            },
             ct);
 
     public Task<SaveAnswerResult> SaveDiagramAnswerAsync(string studentId, Guid attemptId, Guid questionId, SaveDiagramAnswerInput input, CancellationToken ct = default) =>
         SaveAnswerAsync(studentId, attemptId, questionId, QuestionType.Diagram,
-            () => new DiagramAnswerInProgress { Diagram = input.Text },
+            async (aId, qId) =>
+            {
+                var key = InProgressKey(aId, qId);
+                await _storage.PutTextAsync(key, input.Text ?? string.Empty, ct);
+                return new DiagramAnswerInProgress { ObjectKey = key };
+            },
             ct);
 
     public async Task<ClearAnswerResult> ClearAnswerAsync(string studentId, Guid attemptId, Guid questionId, CancellationToken ct = default)
@@ -160,6 +200,7 @@ public class TestsInProgressService : ITestsInProgressService
             .FirstOrDefaultAsync(a => a.AttemptInProgressId == attemptId && a.PublishedQuestionId == questionId, ct);
         if (existing is not null)
         {
+            await DeleteAnswerObjectIfAnyAsync(existing, ct);
             _db.AnswersInProgress.Remove(existing);
             attempt.UpdatedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(ct);
@@ -168,12 +209,26 @@ public class TestsInProgressService : ITestsInProgressService
         return new ClearAnswerResult.Success();
     }
 
+    private async Task DeleteAnswerObjectIfAnyAsync(AnswerInProgress answer, CancellationToken ct)
+    {
+        var key = answer switch
+        {
+            CodeAnswerInProgress c => c.ObjectKey,
+            DiagramAnswerInProgress d => d.ObjectKey,
+            _ => null,
+        };
+        if (!string.IsNullOrEmpty(key))
+        {
+            await _storage.DeleteAsync(key, ct);
+        }
+    }
+
     private async Task<SaveAnswerResult> SaveAnswerAsync(
         string studentId,
         Guid attemptId,
         Guid questionId,
         QuestionType expectedType,
-        Func<AnswerInProgress> factory,
+        Func<Guid, Guid, Task<AnswerInProgress>> factory,
         CancellationToken ct)
     {
         var attempt = await _db.AttemptsInProgress
@@ -196,6 +251,8 @@ public class TestsInProgressService : ITestsInProgressService
         }
 
         // Replace the existing answer for this question (TPH discriminator can't be updated in place).
+        // For Code/Diagram the MinIO object key is deterministic per (attempt, question), so re-uploading
+        // overwrites the previous content — no need to delete the object here.
         var existing = await _db.AnswersInProgress
             .FirstOrDefaultAsync(a => a.AttemptInProgressId == attemptId && a.PublishedQuestionId == questionId, ct);
         if (existing is not null)
@@ -204,7 +261,7 @@ public class TestsInProgressService : ITestsInProgressService
             await _db.SaveChangesAsync(ct);
         }
 
-        var answer = factory();
+        var answer = await factory(attemptId, questionId);
         answer.AttemptInProgressId = attemptId;
         answer.PublishedQuestionId = questionId;
         answer.UpdatedAt = DateTimeOffset.UtcNow;
@@ -236,27 +293,6 @@ public class TestsInProgressService : ITestsInProgressService
             .ToListAsync(ct);
         var questionsById = questions.ToDictionary(q => q.Id);
 
-        var submittedAnswers = attempt.Answers
-            .Select(a => ToSubmitted(a, questionsById))
-            .ToList();
-
-        // Ensure every question has a submitted-answer row, even if the student left it blank.
-        // Without this, the teacher has nothing to attach a manual mark to.
-        var answeredQuestionIds = submittedAnswers.Select(a => a.PublishedQuestionId).ToHashSet();
-        foreach (var question in questions)
-        {
-            if (answeredQuestionIds.Contains(question.Id)) continue;
-            var blank = CreateBlankSubmitted(question);
-            // Auto-evaluated types: a blank choice answer is worth 0.
-            if (blank is SingleAnswerSubmitted or MultipleAnswersSubmitted)
-            {
-                blank.Mark = 0;
-            }
-            submittedAnswers.Add(blank);
-        }
-
-        var evaluatedMark = submittedAnswers.Sum(a => a.Mark ?? 0);
-
         var submitted = new AttemptSubmitted
         {
             PublishedTestId = attempt.PublishedTestId,
@@ -264,9 +300,31 @@ public class TestsInProgressService : ITestsInProgressService
             StartedAt = attempt.StartedAt,
             SubmittedAt = submittedAt,
             DurationSeconds = duration,
-            EvaluatedMark = evaluatedMark,
-            Answers = submittedAnswers,
         };
+
+        // In-progress object keys to delete after a successful commit.
+        var inProgressKeysToDelete = new List<string>();
+
+        foreach (var ip in attempt.Answers)
+        {
+            var s = await ToSubmittedAsync(ip, submitted.Id, questionsById, inProgressKeysToDelete, ct);
+            submitted.Answers.Add(s);
+        }
+
+        // Ensure every question has a submitted-answer row, even if the student left it blank.
+        var answeredQuestionIds = submitted.Answers.Select(a => a.PublishedQuestionId).ToHashSet();
+        foreach (var question in questions)
+        {
+            if (answeredQuestionIds.Contains(question.Id)) continue;
+            var blank = CreateBlankSubmitted(question);
+            if (blank is SingleAnswerSubmitted or MultipleAnswersSubmitted)
+            {
+                blank.Mark = 0;
+            }
+            submitted.Answers.Add(blank);
+        }
+
+        submitted.EvaluatedMark = submitted.Answers.Sum(a => a.Mark ?? 0);
 
         var publishedTest = attempt.PublishedTest;
         var student = attempt.Student;
@@ -279,6 +337,19 @@ public class TestsInProgressService : ITestsInProgressService
 
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+
+        // Best-effort: clean up the in-progress MinIO objects now that they've been copied.
+        foreach (var key in inProgressKeysToDelete)
+        {
+            try
+            {
+                await _storage.DeleteAsync(key, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete in-progress object {Key} after submit.", key);
+            }
+        }
 
         // Best-effort: mark the Classroom assignment as turned in for this student.
         if (student is not null
@@ -341,37 +412,60 @@ public class TestsInProgressService : ITestsInProgressService
         }
     }
 
-    private static AnswerSubmitted ToSubmitted(AnswerInProgress a, Dictionary<Guid, PublishedQuestion> questionsById)
+    private async Task<AnswerSubmitted> ToSubmittedAsync(
+        AnswerInProgress a,
+        Guid attemptSubmittedId,
+        Dictionary<Guid, PublishedQuestion> questionsById,
+        List<string> inProgressKeysToDelete,
+        CancellationToken ct)
     {
-        AnswerSubmitted submitted = a switch
+        AnswerSubmitted submitted;
+        switch (a)
         {
-            SingleAnswerInProgress s => new SingleAnswerSubmitted
+            case SingleAnswerInProgress s:
+                submitted = new SingleAnswerSubmitted
+                {
+                    PublishedQuestionId = s.PublishedQuestionId,
+                    SelectedOptionOrder = s.SelectedOptionOrder,
+                };
+                break;
+            case MultipleAnswersInProgress m:
+                submitted = new MultipleAnswersSubmitted
+                {
+                    PublishedQuestionId = m.PublishedQuestionId,
+                    SelectedOptionOrders = m.SelectedOptionOrders.ToList(),
+                };
+                break;
+            case TextAnswerInProgress t:
+                submitted = new TextAnswerSubmitted
+                {
+                    PublishedQuestionId = t.PublishedQuestionId,
+                    Text = t.Text,
+                };
+                break;
+            case CodeAnswerInProgress c:
             {
-                PublishedQuestionId = s.PublishedQuestionId,
-                SelectedOptionOrder = s.SelectedOptionOrder,
-            },
-            MultipleAnswersInProgress m => new MultipleAnswersSubmitted
+                var destKey = await CopyAnswerObjectAsync(c.ObjectKey, attemptSubmittedId, c.PublishedQuestionId, "code", inProgressKeysToDelete, ct);
+                submitted = new CodeAnswerSubmitted
+                {
+                    PublishedQuestionId = c.PublishedQuestionId,
+                    ObjectKey = destKey,
+                };
+                break;
+            }
+            case DiagramAnswerInProgress d:
             {
-                PublishedQuestionId = m.PublishedQuestionId,
-                SelectedOptionOrders = m.SelectedOptionOrders.ToList(),
-            },
-            TextAnswerInProgress t => new TextAnswerSubmitted
-            {
-                PublishedQuestionId = t.PublishedQuestionId,
-                Text = t.Text,
-            },
-            CodeAnswerInProgress c => new CodeAnswerSubmitted
-            {
-                PublishedQuestionId = c.PublishedQuestionId,
-                Code = c.Code,
-            },
-            DiagramAnswerInProgress d => new DiagramAnswerSubmitted
-            {
-                PublishedQuestionId = d.PublishedQuestionId,
-                Diagram = d.Diagram,
-            },
-            _ => throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}"),
-        };
+                var destKey = await CopyAnswerObjectAsync(d.ObjectKey, attemptSubmittedId, d.PublishedQuestionId, "diagram", inProgressKeysToDelete, ct);
+                submitted = new DiagramAnswerSubmitted
+                {
+                    PublishedQuestionId = d.PublishedQuestionId,
+                    ObjectKey = destKey,
+                };
+                break;
+            }
+            default:
+                throw new InvalidOperationException($"Unknown answer subtype: {a.GetType().Name}");
+        }
 
         // Auto-evaluate Single/Multiple. Other types stay null until graded by the teacher.
         if (a is SingleAnswerInProgress or MultipleAnswersInProgress)
@@ -380,6 +474,32 @@ public class TestsInProgressService : ITestsInProgressService
         }
 
         return submitted;
+    }
+
+    private async Task<string?> CopyAnswerObjectAsync(
+        string? sourceKey,
+        Guid attemptSubmittedId,
+        Guid questionId,
+        string kind,
+        List<string> inProgressKeysToDelete,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(sourceKey)) return null;
+
+        var destKey = SubmittedKey(attemptSubmittedId, questionId);
+        try
+        {
+            await _storage.CopyAsync(sourceKey, destKey, ct);
+            inProgressKeysToDelete.Add(sourceKey);
+            return destKey;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to copy {Kind} answer object {SourceKey} to {DestKey}; submitted answer will reference the original key.",
+                kind, sourceKey, destKey);
+            return sourceKey;
+        }
     }
 
     private static AnswerSubmitted CreateBlankSubmitted(PublishedQuestion question) => question.Type switch
@@ -402,12 +522,12 @@ public class TestsInProgressService : ITestsInProgressService
         QuestionType.Code => new CodeAnswerSubmitted
         {
             PublishedQuestionId = question.Id,
-            Code = null,
+            ObjectKey = null,
         },
         QuestionType.Diagram => new DiagramAnswerSubmitted
         {
             PublishedQuestionId = question.Id,
-            Diagram = null,
+            ObjectKey = null,
         },
         _ => throw new InvalidOperationException($"Unknown question type: {question.Type}"),
     };

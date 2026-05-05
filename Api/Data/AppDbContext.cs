@@ -154,12 +154,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasMaxLength(10000);
 
         builder.Entity<CodeAnswerInProgress>()
-            .Property(x => x.Code)
-            .HasMaxLength(200000);
+            .Property(x => x.ObjectKey)
+            .HasMaxLength(500);
 
         builder.Entity<DiagramAnswerInProgress>()
-            .Property(x => x.Diagram)
-            .HasMaxLength(10000);
+            .Property(x => x.ObjectKey)
+            .HasMaxLength(500);
 
         builder.Entity<AttemptSubmitted>(e =>
         {
@@ -208,11 +208,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasMaxLength(10000);
 
         builder.Entity<CodeAnswerSubmitted>()
-            .Property(x => x.Code)
-            .HasMaxLength(200000);
+            .Property(x => x.ObjectKey)
+            .HasMaxLength(500);
 
         builder.Entity<DiagramAnswerSubmitted>()
-            .Property(x => x.Diagram)
-            .HasMaxLength(10000);
+            .Property(x => x.ObjectKey)
+            .HasMaxLength(500);
     }
 }

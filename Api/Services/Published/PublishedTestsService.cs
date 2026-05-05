@@ -2,6 +2,7 @@ using Api.Contracts;
 using Api.Data;
 using Api.Models;
 using Api.Services;
+using Api.Services.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Services.Published;
@@ -11,15 +12,18 @@ public class PublishedTestsService : IPublishedTestsService
     private readonly AppDbContext _db;
     private readonly GoogleClassroomClient _classroom;
     private readonly ITeacherProvider _teacherProvider;
+    private readonly IObjectStorageService _storage;
 
     public PublishedTestsService(
         AppDbContext db,
         GoogleClassroomClient classroom,
-        ITeacherProvider teacherProvider)
+        ITeacherProvider teacherProvider,
+        IObjectStorageService storage)
     {
         _db = db;
         _classroom = classroom;
         _teacherProvider = teacherProvider;
+        _storage = storage;
     }
 
     public async Task<PublishedTestInfoDto?> GetInfoAsync(Guid id, CancellationToken ct = default)
@@ -168,7 +172,7 @@ public class PublishedTestsService : IPublishedTestsService
 
         var student = await _db.Users.FirstOrDefaultAsync(u => u.Id == attempt.StudentId, ct);
 
-        return BuildDetailDto(attempt, publishedTest, student);
+        return await BuildDetailDtoAsync(attempt, publishedTest, student, ct);
     }
 
     public async Task<SetManualMarksResult> SetManualMarksAsync(
@@ -222,7 +226,7 @@ public class PublishedTestsService : IPublishedTestsService
         await _db.SaveChangesAsync(ct);
 
         var student = await _db.Users.FirstOrDefaultAsync(u => u.Id == attempt.StudentId, ct);
-        return new SetManualMarksResult.Success(BuildDetailDto(attempt, publishedTest, student));
+        return new SetManualMarksResult.Success(await BuildDetailDtoAsync(attempt, publishedTest, student, ct));
     }
 
     public async Task<SendMarkResult> SendMarkToClassroomAsync(
@@ -286,62 +290,61 @@ public class PublishedTestsService : IPublishedTestsService
         return new SendMarkResult.Success(totalMark, maxMark);
     }
 
-    private static AttemptDetailForTeacherDto BuildDetailDto(
+    private async Task<AttemptDetailForTeacherDto> BuildDetailDtoAsync(
         AttemptSubmitted attempt,
         PublishedTest publishedTest,
-        ApplicationUser? student)
+        ApplicationUser? student,
+        CancellationToken ct)
     {
         var questionsByIdLocal = publishedTest.Questions.ToDictionary(q => q.Id);
         var answersByQuestion = attempt.Answers.ToDictionary(a => a.PublishedQuestionId);
         var maxMark = publishedTest.Questions.Sum(q => q.Mark);
 
-        var questions = publishedTest.Questions
-            .OrderBy(q => q.Order)
-            .Select(q =>
+        var questions = new List<AttemptQuestionForTeacherDto>();
+        foreach (var q in publishedTest.Questions.OrderBy(qq => qq.Order))
+        {
+            answersByQuestion.TryGetValue(q.Id, out var answer);
+            int? selectedSingle = null;
+            List<int>? selectedMultiple = null;
+            string? answerText = null;
+
+            switch (answer)
             {
-                answersByQuestion.TryGetValue(q.Id, out var answer);
-                int? selectedSingle = null;
-                List<int>? selectedMultiple = null;
-                string? answerText = null;
+                case SingleAnswerSubmitted s:
+                    selectedSingle = s.SelectedOptionOrder;
+                    break;
+                case MultipleAnswersSubmitted m:
+                    selectedMultiple = m.SelectedOptionOrders.ToList();
+                    break;
+                case TextAnswerSubmitted t:
+                    answerText = t.Text;
+                    break;
+                case CodeAnswerSubmitted c:
+                    answerText = c.ObjectKey is null ? null : await _storage.GetTextAsync(c.ObjectKey, ct);
+                    break;
+                case DiagramAnswerSubmitted d:
+                    answerText = d.ObjectKey is null ? null : await _storage.GetTextAsync(d.ObjectKey, ct);
+                    break;
+            }
 
-                switch (answer)
-                {
-                    case SingleAnswerSubmitted s:
-                        selectedSingle = s.SelectedOptionOrder;
-                        break;
-                    case MultipleAnswersSubmitted m:
-                        selectedMultiple = m.SelectedOptionOrders.ToList();
-                        break;
-                    case TextAnswerSubmitted t:
-                        answerText = t.Text;
-                        break;
-                    case CodeAnswerSubmitted c:
-                        answerText = c.Code;
-                        break;
-                    case DiagramAnswerSubmitted d:
-                        answerText = d.Diagram;
-                        break;
-                }
+            var isAuto = q.Type is QuestionType.SingleAnswer or QuestionType.MultipleAnswers;
 
-                var isAuto = q.Type is QuestionType.SingleAnswer or QuestionType.MultipleAnswers;
-
-                return new AttemptQuestionForTeacherDto(
-                    q.Id,
-                    q.Text,
-                    q.Order,
-                    q.Mark,
-                    q.Type,
-                    q.CodeLanguage,
-                    q.Answers.OrderBy(a => a.Order)
-                        .Select(a => new AttemptAnswerOptionDto(a.Order, a.Text, a.IsCorrect))
-                        .ToList(),
-                    selectedSingle,
-                    selectedMultiple,
-                    answerText,
-                    answer?.Mark,
-                    isAuto);
-            })
-            .ToList();
+            questions.Add(new AttemptQuestionForTeacherDto(
+                q.Id,
+                q.Text,
+                q.Order,
+                q.Mark,
+                q.Type,
+                q.CodeLanguage,
+                q.Answers.OrderBy(a => a.Order)
+                    .Select(a => new AttemptAnswerOptionDto(a.Order, a.Text, a.IsCorrect))
+                    .ToList(),
+                selectedSingle,
+                selectedMultiple,
+                answerText,
+                answer?.Mark,
+                isAuto));
+        }
 
         var totalMark = attempt.Answers.Sum(a => a.Mark ?? 0);
         var fullyEvaluated = attempt.Answers.Count > 0 && attempt.Answers.All(a => a.Mark is not null);

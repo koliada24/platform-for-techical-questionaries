@@ -3,12 +3,14 @@ using Api.Data;
 using Api.Models;
 using Api.Services.InProgress;
 using Api.Services.Published;
+using Api.Services.Storage;
 using Api.Services.Templates;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Minio;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -117,6 +119,20 @@ builder.Services.AddScoped<ITestTemplatesService, TestTemplatesService>();
 builder.Services.AddScoped<IPublishedTestsService, PublishedTestsService>();
 builder.Services.AddScoped<ITestsInProgressService, TestsInProgressService>();
 
+// Object storage (MinIO) for code/diagram answer payloads.
+builder.Services.Configure<MinioOptions>(builder.Configuration.GetSection("Minio"));
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MinioOptions>>().Value;
+    var clientBuilder = new MinioClient()
+        .WithEndpoint(opts.Endpoint)
+        .WithCredentials(opts.AccessKey, opts.SecretKey);
+    if (opts.UseSSL) clientBuilder = clientBuilder.WithSSL();
+    return clientBuilder.Build();
+});
+builder.Services.AddSingleton<MinioObjectStorageService>();
+builder.Services.AddSingleton<IObjectStorageService>(sp => sp.GetRequiredService<MinioObjectStorageService>());
+
 var app = builder.Build();
 
 // Apply migrations / ensure DB created
@@ -130,6 +146,17 @@ using (var scope = app.Services.CreateScope())
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));
+    }
+
+    // Make sure the answers bucket exists in MinIO.
+    var storage = scope.ServiceProvider.GetRequiredService<MinioObjectStorageService>();
+    try
+    {
+        await storage.EnsureBucketAsync();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Failed to ensure MinIO bucket exists at startup.");
     }
 }
 
