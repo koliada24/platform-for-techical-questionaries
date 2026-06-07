@@ -88,6 +88,39 @@ export function DiagramEditor({ value, onChange, readOnly = false, height = 480 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initial = useMemo(() => parseDiagramPayload(value), []);
 
+  // Force a "formal" (drawio-like) look instead of Excalidraw's default
+  // hand-drawn style: clean strokes (roughness=0), Helvetica text (fontFamily=2),
+  // solid fills, sharp corners. Applied both to newly-created items (via
+  // appState `currentItem*` defaults) and to elements loaded from a saved scene.
+  const FORMAL_APP_STATE: Partial<AppState> = {
+    currentItemRoughness: 0,
+    currentItemFontFamily: 2,
+    currentItemStrokeStyle: 'solid',
+    currentItemFillStyle: 'solid',
+    currentItemStrokeWidth: 1,
+    currentItemRoundness: 'sharp',
+    currentItemArrowType: 'sharp',
+  };
+  const normalizeElement = (el: ExcalidrawElement): ExcalidrawElement => {
+    const next: ExcalidrawElement = { ...el, roughness: 0 };
+    if (el.type === 'text' || 'fontFamily' in el) next.fontFamily = 2;
+    if ('roundness' in el) next.roundness = null;
+    if ('strokeStyle' in el) next.strokeStyle = 'solid';
+    return next;
+  };
+  const initialFormal = useMemo(() => {
+    if (!initial) return null;
+    return {
+      ...initial,
+      scene: {
+        ...initial.scene,
+        elements: initial.scene.elements.map(normalizeElement),
+        appState: { ...FORMAL_APP_STATE, ...(initial.scene.appState ?? {}) },
+      },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const apiRef = useRef<ExcalidrawApi | null>(null);
 
   const debounceRef = useRef<number | null>(null);
@@ -156,14 +189,14 @@ export function DiagramEditor({ value, onChange, readOnly = false, height = 480 
             apiRef.current = api;
           }}
           initialData={
-            initial
+            initialFormal
               ? {
-                  elements: initial.scene.elements as never,
-                  appState: initial.scene.appState as never,
-                  files: initial.scene.files as never,
+                  elements: initialFormal.scene.elements as never,
+                  appState: initialFormal.scene.appState as never,
+                  files: initialFormal.scene.files as never,
                   scrollToContent: true,
                 }
-              : undefined
+              : { appState: FORMAL_APP_STATE as never }
           }
           theme={theme === 'dark' ? 'dark' : 'light'}
           viewModeEnabled={readOnly}

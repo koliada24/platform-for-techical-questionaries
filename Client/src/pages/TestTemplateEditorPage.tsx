@@ -433,11 +433,7 @@ function AnswersField({ qi, control, register, setValue, trigger, errors }: Answ
   }
 
   if (!hasOptions(type)) {
-    return (
-      <div className="text-muted small fst-italic">
-        Answer collection for this question type isn’t implemented yet.
-      </div>
-    );
+    return null;
   }
 
   const isSingle = type === 'SingleAnswer';
