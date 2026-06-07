@@ -40,9 +40,6 @@ public class AuthController : ControllerBase
         return Ok(ToDto(user));
     }
 
-    // ----- Google OAuth: Teacher -----
-    // The Google handler intercepts /api/auth/google-callback-teacher (its CallbackPath)
-    // and, on success, redirects to this action at a *different* path to finalize sign-in.
     [HttpGet("google-login-teacher")]
     public IActionResult GoogleLoginTeacher([FromQuery] string? returnUrl = null)
     {
@@ -57,7 +54,6 @@ public class AuthController : ControllerBase
     public Task<IActionResult> GoogleCompleteTeacher([FromQuery] string? returnUrl = null)
         => HandleGoogleCallback("External-Teacher", UserRole.Teacher, returnUrl);
 
-    // ----- Google OAuth: Student -----
     [HttpGet("google-login-student")]
     public IActionResult GoogleLoginStudent([FromQuery] string? returnUrl = null)
     {
@@ -107,7 +103,6 @@ public class AuthController : ControllerBase
         else
         {
             user.GoogleId = googleId;
-            // Lock role to original; if mismatched, redirect with error
             if (user.Role != role)
             {
                 await HttpContext.SignOutAsync(externalScheme);
@@ -115,7 +110,6 @@ public class AuthController : ControllerBase
             }
         }
 
-        // Persist Google tokens for later Classroom API calls
         user.GoogleAccessToken = result.Properties?.GetTokenValue("access_token");
         user.GoogleRefreshToken = result.Properties?.GetTokenValue("refresh_token") ?? user.GoogleRefreshToken;
         if (!string.IsNullOrEmpty(picture)) user.PictureUrl = picture;

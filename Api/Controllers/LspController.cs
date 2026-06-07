@@ -9,13 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
-/// <summary>
-/// LSP-over-WebSocket bridge. One <c>csharp-ls</c> process is spawned per
-/// connected student. The controller proxies bytes between the WebSocket and
-/// the language server's stdin/stdout, translating between
-/// "one JSON-RPC message per WS frame" (what the browser sends) and
-/// "Content-Length framed JSON-RPC" (what LSP servers expect on stdio).
-/// </summary>
 [ApiController]
 [Route("api/lsp")]
 public class LspController : ControllerBase
@@ -66,9 +59,6 @@ public class LspController : ControllerBase
                 ct);
             await System.IO.File.WriteAllTextAsync(documentPath, "// student code\n", ct);
 
-            // Custom hello message. The frontend reads this BEFORE sending any LSP traffic,
-            // so it knows which workspace/document URIs to use in `initialize` / `didOpen`.
-            // After this single frame, the wire is pure JSON-RPC.
             var hello = JsonSerializer.Serialize(new
             {
                 workspaceUri,
@@ -106,7 +96,6 @@ public class LspController : ControllerBase
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
-            // Drain stderr to logs (best effort) so it doesn't fill the pipe.
             _ = Task.Run(async () =>
             {
                 try
@@ -215,11 +204,6 @@ public class LspController : ControllerBase
 
     private static readonly byte[] HeaderSeparator = { 0x0D, 0x0A, 0x0D, 0x0A }; // \r\n\r\n
 
-    /// <summary>
-    /// Tries to read one LSP-framed message from <paramref name="buffer"/>. On
-    /// success, returns the JSON payload (without headers) and advances
-    /// <paramref name="buffer"/> past the consumed bytes.
-    /// </summary>
     private static bool TryReadMessage(ref ReadOnlySequence<byte> buffer, out byte[] payload)
     {
         payload = Array.Empty<byte>();

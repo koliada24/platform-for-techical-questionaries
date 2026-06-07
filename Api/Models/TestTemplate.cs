@@ -31,10 +31,6 @@ public class QuestionTemplate
     public int Order { get; set; }
     public int Mark { get; set; } = 1;
     public QuestionType Type { get; set; } = QuestionType.SingleAnswer;
-    /// <summary>
-    /// For QuestionType.Code: which language the student writes in (e.g. "python", "javascript").
-    /// Drives Monaco syntax highlighting. Null for non-code questions.
-    /// </summary>
     public string? CodeLanguage { get; set; }
     public List<Answer> Answers { get; set; } = new();
 }
