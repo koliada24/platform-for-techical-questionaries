@@ -98,7 +98,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // CORS for Vite dev server
-var clientBaseUrl = builder.Configuration["Client:BaseUrl"] ?? "http://localhost:5173";
+var clientBaseUrl = builder.Configuration["Client:BaseUrl"] ?? "https://localhost:5173";
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

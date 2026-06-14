@@ -39,18 +39,22 @@ services:
     restart: unless-stopped
 
   api:
+    image: koliada24/qapp-api:latest
     build:
       context: ./Api
       dockerfile: Dockerfile
     container_name: qapp-api
     ports:
-      # Host port matches Google OAuth registered redirect URIs (http://localhost:5107/...)
-      - "5107:8080"
+      # Host port matches Google OAuth registered redirect URIs (https://localhost:5107/...)
+      - "5107:8443"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_URLS: http://+:8080
+      # Listen HTTPS only. Kestrel picks up the cert from Kestrel:Certificates:Default.
+      ASPNETCORE_URLS: https://+:8443
+      Kestrel__Certificates__Default__Path: /certs/server.pfx
+      Kestrel__Certificates__Default__Password: ${PFX_PASSWORD:-devpassword}
       ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-qapp};Username=${POSTGRES_USER:-qapp};Password=${POSTGRES_PASSWORD:-qapp}"
-      Client__BaseUrl: "http://localhost:5173"
+      Client__BaseUrl: "https://localhost:5173"
       # Provide via .env file or shell environment; do NOT commit real secrets.
       Google__ClientId: ${GOOGLE_CLIENT_ID:-}
       Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
@@ -59,6 +63,8 @@ services:
       Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-qappminio}
       Minio__UseSSL: "false"
       Minio__Bucket: ${MINIO_BUCKET:-qapp-answers}
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       db:
         condition: service_healthy
@@ -67,13 +73,16 @@ services:
     restart: unless-stopped
 
   client:
+    image: koliada24/qapp-client:latest
     build:
       context: ./Client
       dockerfile: Dockerfile
     container_name: qapp-client
     ports:
       # Host port matches the URL configured in API CORS / Client:BaseUrl
-      - "5173:80"
+      - "5173:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
     depends_on:
       - api
     restart: unless-stopped

@@ -146,7 +146,7 @@ public class AuthController : ControllerBase
 
     private string BuildClientUrl(string path)
     {
-        var baseUrl = _configuration["Client:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
+        var baseUrl = _configuration["Client:BaseUrl"]?.TrimEnd('/') ?? "https://localhost:5173";
         if (!path.StartsWith('/')) path = "/" + path;
         return baseUrl + path;
     }
