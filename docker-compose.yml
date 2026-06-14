@@ -54,7 +54,7 @@ services:
       Kestrel__Certificates__Default__Path: /certs/server.pfx
       Kestrel__Certificates__Default__Password: ${PFX_PASSWORD:-devpassword}
       ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-qapp};Username=${POSTGRES_USER:-qapp};Password=${POSTGRES_PASSWORD:-qapp}"
-      Client__BaseUrl: "https://localhost:5173"
+      Client__BaseUrl: ${PUBLIC_BASE_URL:-https://localhost:5173}
       # Provide via .env file or shell environment; do NOT commit real secrets.
       Google__ClientId: ${GOOGLE_CLIENT_ID:-}
       Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}

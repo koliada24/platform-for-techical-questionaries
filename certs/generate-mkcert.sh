@@ -13,7 +13,9 @@ if ! command -v mkcert >/dev/null 2>&1; then
   exit 1
 fi
 
-mkcert -cert-file server.crt -key-file server.key localhost 127.0.0.1 ::1
+EXTRA_HOSTS=(${CERT_HOSTS:-} "$@")
+mkcert -cert-file server.crt -key-file server.key \
+  localhost 127.0.0.1 ::1 "${EXTRA_HOSTS[@]}"
 
 openssl pkcs12 -export \
   -out server.pfx \
