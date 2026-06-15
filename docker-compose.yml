@@ -53,6 +53,7 @@ services:
       ASPNETCORE_URLS: https://+:8443
       Kestrel__Certificates__Default__Path: /certs/server.pfx
       Kestrel__Certificates__Default__Password: ${PFX_PASSWORD:-devpassword}
+      Kestrel__EndpointDefaults__Protocols: Http1
       ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-qapp};Username=${POSTGRES_USER:-qapp};Password=${POSTGRES_PASSWORD:-qapp}"
       Client__BaseUrl: ${PUBLIC_BASE_URL:-https://localhost:5173}
       # Provide via .env file or shell environment; do NOT commit real secrets.
